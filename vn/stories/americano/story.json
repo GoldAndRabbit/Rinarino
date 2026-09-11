@@ -1,0 +1,1041 @@
+{
+  "version": 1,
+  "title": "三杯凉掉的美式",
+  "vars": {
+    "zhao": 0,
+    "zhi": 0,
+    "wan": 0
+  },
+  "start": "opening",
+  "nodes": [
+    {
+      "id": "opening",
+      "label": "开场",
+      "tags": {
+        "bg": "bg_cafe_door",
+        "amb": "amb_cafe",
+        "music": "bgm_main"
+      },
+      "lines": [
+        {
+          "text": "周六下午三点四十。「拾光」咖啡馆，靠窗第二张桌。"
+        },
+        {
+          "text": "你妈给你安排的相亲是三点。你迟到了四十分钟——地铁、暴雨、以及一个你自己都不信的借口。"
+        },
+        {
+          "text": "推门的时候你已经想好了怎么道歉。"
+        },
+        {
+          "text": "然后你看见桌上摆着三杯已经凉透了的美式。",
+          "tags": {
+            "cg": "cg_three",
+            "sprite": "zhao:cold, zhi:laugh, wan:shy"
+          }
+        },
+        {
+          "text": "桌边坐着三个人。"
+        },
+        {
+          "text": "她们同时抬头看你。"
+        },
+        {
+          "text": "三点整。三点十分。三点二十。",
+          "speaker": "zhao"
+        },
+        {
+          "text": "我们是按这个顺序到的。",
+          "speaker": "zhao"
+        },
+        {
+          "text": "我刚才还跟她们打赌你会不会来。",
+          "speaker": "zhi"
+        },
+        {
+          "text": "我赌的是不会。",
+          "speaker": "zhi"
+        },
+        {
+          "text": "我……我点了三杯，因为不知道你喜欢哪种。",
+          "speaker": "wan"
+        },
+        {
+          "text": "后来发现是我们三个人的。",
+          "speaker": "wan"
+        },
+        {
+          "text": "四十分钟里，她们已经把这件事搞清楚了：介绍人把三场排在了同一个下午，同一张桌。"
+        },
+        {
+          "text": "而你一个都没赶上。"
+        }
+      ],
+      "choices": [
+        {
+          "text": "先道歉，一个一个地道",
+          "target": "after_sorry",
+          "effects": [
+            [
+              "zhao",
+              "+=",
+              1
+            ],
+            [
+              "zhi",
+              "+=",
+              1
+            ],
+            [
+              "wan",
+              "+=",
+              1
+            ]
+          ],
+          "lines": [
+            {
+              "text": "你把四十分钟拆成三份，一份一份还回去。"
+            },
+            {
+              "text": "……行吧。至少你没找借口。",
+              "speaker": "zhao"
+            }
+          ]
+        },
+        {
+          "text": "「这三杯我买单，你们谁先说话我听谁的」",
+          "target": "after_sorry",
+          "effects": [
+            [
+              "zhi",
+              "+=",
+              1
+            ]
+          ],
+          "lines": [
+            {
+              "text": "哇。",
+              "speaker": "zhi"
+            },
+            {
+              "text": "这招挺不要脸的，但我喜欢。",
+              "speaker": "zhi"
+            }
+          ]
+        },
+        {
+          "text": "什么都没说，先把外套脱了坐下",
+          "target": "after_sorry",
+          "effects": [
+            [
+              "zhao",
+              "+=",
+              1
+            ]
+          ],
+          "lines": [
+            {
+              "text": "你这个反应……",
+              "speaker": "zhao"
+            },
+            {
+              "text": "比道歉有用。坐吧。",
+              "speaker": "zhao"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "after_sorry",
+      "label": "落座",
+      "tags": {
+        "bg": "bg_cafe_table",
+        "sprite": "zhao:normal, zhi:normal, wan:normal"
+      },
+      "lines": [
+        {
+          "text": "服务生过来问要不要换热的。三个人都没说话，看着你。"
+        },
+        {
+          "text": "那现在怎么办？总不能四个人一起相吧。",
+          "speaker": "zhi"
+        },
+        {
+          "text": "要不……各自聊十分钟？",
+          "speaker": "wan"
+        },
+        {
+          "text": "三十分钟。我四点半有事。",
+          "speaker": "zhao"
+        },
+        {
+          "text": "时间只够你认真对待一个人。"
+        }
+      ],
+      "choices": [
+        {
+          "text": "留下陆昭",
+          "target": "zhao_1",
+          "effects": [
+            [
+              "zhao",
+              "+=",
+              1
+            ]
+          ],
+          "lines": [
+            {
+              "text": "另外两位很有默契地端着杯子挪到了隔壁桌。"
+            }
+          ]
+        },
+        {
+          "text": "留下夏栀",
+          "target": "zhi_1",
+          "effects": [
+            [
+              "zhi",
+              "+=",
+              1
+            ]
+          ],
+          "lines": [
+            {
+              "text": "夏栀把相机往桌上一放，像是要采访你。"
+            }
+          ]
+        },
+        {
+          "text": "留下林晚",
+          "target": "wan_1",
+          "effects": [
+            [
+              "wan",
+              "+=",
+              1
+            ]
+          ],
+          "lines": [
+            {
+              "text": "她把那本书往包里塞，塞了两次才塞进去。"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "zhao_1",
+      "label": "昭一",
+      "tags": {
+        "bg": "bg_cafe_table",
+        "sprite": "zhao:cold"
+      },
+      "lines": [
+        {
+          "text": "陆昭从包里拿出一个本子，翻开，放在桌上。上面有一页是今天的日程，「相亲」两个字后面写着「30min」。"
+        },
+        {
+          "text": "我先说清楚。我今天来是因为我妈住院了，她提的唯一要求。",
+          "speaker": "zhao"
+        },
+        {
+          "text": "我不想浪费你的时间，也不想浪费我的。",
+          "speaker": "zhao"
+        },
+        {
+          "text": "你有什么想问的，一次问完。",
+          "speaker": "zhao"
+        }
+      ],
+      "choices": [
+        {
+          "text": "「那你自己想要什么？」",
+          "target": "zhao_2",
+          "effects": [
+            [
+              "zhao",
+              "+=",
+              1
+            ]
+          ],
+          "lines": [
+            {
+              "text": "她笔尖停在纸上，停了三秒。"
+            },
+            {
+              "text": "没有人问过我这个。",
+              "speaker": "zhao"
+            }
+          ]
+        },
+        {
+          "text": "「你本子上写了三十分钟，现在过了四分钟。」",
+          "target": "zhao_2",
+          "lines": [
+            {
+              "text": "……你在跟我算时间？",
+              "speaker": "zhao"
+            },
+            {
+              "text": "有意思。",
+              "speaker": "zhao"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "zhao_2",
+      "label": "昭二",
+      "tags": {
+        "bg": "bg_cafe_corner",
+        "sprite": "zhao:weary"
+      },
+      "lines": [
+        {
+          "text": "她把本子合上了。窗外的雨还在下，玻璃上全是水痕。"
+        },
+        {
+          "text": "我三十岁，合伙人，一年飞四十趟。",
+          "speaker": "zhao"
+        },
+        {
+          "text": "我妈觉得我把自己活成了一份简历。",
+          "speaker": "zhao"
+        },
+        {
+          "text": "她可能说得对。",
+          "speaker": "zhao"
+        }
+      ],
+      "choices": [
+        {
+          "text": "「简历上最难写的一行是什么？」",
+          "target": "zhao_3",
+          "effects": [
+            [
+              "zhao",
+              "+=",
+              1
+            ]
+          ],
+          "lines": [
+            {
+              "text": "……",
+              "speaker": "zhao"
+            },
+            {
+              "text": "「空窗期」。",
+              "speaker": "zhao"
+            },
+            {
+              "text": "我有三年没做过任何一件不产生结果的事。",
+              "speaker": "zhao"
+            }
+          ]
+        },
+        {
+          "text": "「那你今天这三十分钟，算不算浪费？」",
+          "target": "zhao_3",
+          "effects": [
+            [
+              "zhao",
+              "+=",
+              1
+            ]
+          ],
+          "lines": [
+            {
+              "text": "她看了一眼表，又看了一眼你。"
+            },
+            {
+              "text": "到现在为止不算。",
+              "speaker": "zhao"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "zhao_3",
+      "label": "昭三",
+      "tags": {
+        "bg": "bg_cafe_dusk",
+        "cg": "cg_zhao",
+        "sprite": "zhao:shy"
+      },
+      "lines": [
+        {
+          "text": "四点二十。她的杯子空了，是这四十分钟里她自己去续的第二杯。"
+        },
+        {
+          "text": "我四点半的事，其实是回医院。",
+          "speaker": "zhao"
+        },
+        {
+          "text": "我可以晚半小时。",
+          "speaker": "zhao"
+        },
+        {
+          "text": "她说完就低头看本子，像是在等你替她做这个决定。"
+        }
+      ],
+      "choices": [
+        {
+          "text": "「那就晚半小时。我陪你走过去。」",
+          "target": "zhao_settle",
+          "effects": [
+            [
+              "zhao",
+              "+=",
+              1
+            ]
+          ],
+          "lines": [
+            {
+              "text": "……好。",
+              "speaker": "zhao"
+            },
+            {
+              "text": "但你要先把外套穿上，外面还在下。",
+              "speaker": "zhao"
+            }
+          ]
+        },
+        {
+          "text": "「别改。阿姨在等你。」",
+          "target": "zhao_settle",
+          "lines": [
+            {
+              "text": "嗯。",
+              "speaker": "zhao"
+            },
+            {
+              "text": "她把本子收进包里，动作比刚才慢了一点。"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "zhao_settle",
+      "label": "结算",
+      "tags": {
+        "bg": "bg_cafe_dusk"
+      },
+      "lines": [],
+      "diverts": [
+        {
+          "cond": [
+            [
+              "zhao",
+              ">=",
+              3
+            ]
+          ],
+          "target": "end_zhao_true"
+        }
+      ],
+      "next": "end_zhao_pass"
+    },
+    {
+      "id": "end_zhao_true",
+      "label": "结局·昭",
+      "tags": {
+        "cg": "cg_end_zhao",
+        "sprite": "zhao:smile"
+      },
+      "lines": [
+        {
+          "text": "三个月后，同一张桌，靠窗第二张。"
+        },
+        {
+          "text": "桌上还是三杯美式，但这次是热的——她说，为了纪念。"
+        },
+        {
+          "text": "我把本子上那一页留着了。",
+          "speaker": "zhao"
+        },
+        {
+          "text": "「相亲 30min」，后面我自己加了一行。",
+          "speaker": "zhao"
+        },
+        {
+          "text": "她把本子推过来。那行字写着：**已超时，无限期顺延。**"
+        }
+      ],
+      "next": "END"
+    },
+    {
+      "id": "end_zhao_pass",
+      "label": "结局·擦肩",
+      "tags": {
+        "sprite": "zhao:cold"
+      },
+      "lines": [
+        {
+          "text": "四点半整，她站起来，把椅子推回原位，一丝不苟。"
+        },
+        {
+          "text": "谢谢你的时间。今天是我这个月最轻松的三十分钟。",
+          "speaker": "zhao"
+        },
+        {
+          "text": "她走到门口，回头补了一句「外面在下雨」，然后就走了。"
+        },
+        {
+          "text": "你后来才反应过来——她一直没打伞。"
+        }
+      ],
+      "next": "END"
+    },
+    {
+      "id": "zhi_1",
+      "label": "栀一",
+      "tags": {
+        "bg": "bg_cafe_table",
+        "sprite": "zhi:laugh"
+      },
+      "lines": [
+        {
+          "text": "夏栀端起那杯凉掉的美式喝了一口，皱眉，又喝了一口。"
+        },
+        {
+          "text": "说实话，我不是来相亲的。",
+          "speaker": "zhi"
+        },
+        {
+          "text": "我闺蜜跟我说有个咖啡馆探店的活儿，让我来拍。",
+          "speaker": "zhi"
+        },
+        {
+          "text": "结果我到了，她把我微信拉黑了。",
+          "speaker": "zhi"
+        }
+      ],
+      "choices": [
+        {
+          "text": "「那你为什么还坐了四十分钟？」",
+          "target": "zhi_2",
+          "effects": [
+            [
+              "zhi",
+              "+=",
+              1
+            ]
+          ],
+          "lines": [
+            {
+              "text": "因为另外两个人比拍照有意思。",
+              "speaker": "zhi"
+            },
+            {
+              "text": "尤其是等一个不会来的人这件事。",
+              "speaker": "zhi"
+            }
+          ]
+        },
+        {
+          "text": "「那你现在可以走了。」",
+          "target": "zhi_2",
+          "lines": [
+            {
+              "text": "我也这么想过。",
+              "speaker": "zhi"
+            },
+            {
+              "text": "但我想看看你长什么样。",
+              "speaker": "zhi"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "zhi_2",
+      "label": "栀二",
+      "tags": {
+        "bg": "bg_cafe_counter",
+        "sprite": "zhi:normal"
+      },
+      "lines": [
+        {
+          "text": "她把相机举起来，对着窗外拍了一张，又转过来对着你。"
+        },
+        {
+          "text": "别动。",
+          "speaker": "zhi"
+        },
+        {
+          "text": "快门响了。她看了一眼屏幕，没给你看。"
+        },
+        {
+          "text": "我拍了四年街拍，从来不拍认识的人。",
+          "speaker": "zhi"
+        },
+        {
+          "text": "因为认识了就拍不真了。",
+          "speaker": "zhi"
+        }
+      ],
+      "choices": [
+        {
+          "text": "「那你刚才拍的算什么？」",
+          "target": "zhi_3",
+          "effects": [
+            [
+              "zhi",
+              "+=",
+              1
+            ]
+          ],
+          "lines": [
+            {
+              "text": "算我今天唯一一张废片。",
+              "speaker": "zhi"
+            },
+            {
+              "text": "她说完就把脸转开了。"
+            }
+          ]
+        },
+        {
+          "text": "「那我们就当不认识。」",
+          "target": "zhi_3",
+          "lines": [
+            {
+              "text": "行啊。",
+              "speaker": "zhi"
+            },
+            {
+              "text": "那不认识的人，我请你喝杯热的。",
+              "speaker": "zhi"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "zhi_3",
+      "label": "栀三",
+      "tags": {
+        "bg": "bg_street_afternoon",
+        "cg": "cg_zhi",
+        "sprite": "zhi:shy"
+      },
+      "lines": [
+        {
+          "text": "雨小了。她拉你出门，说店里光太平。"
+        },
+        {
+          "text": "我妈一直说我这行不叫工作。",
+          "speaker": "zhi"
+        },
+        {
+          "text": "她说，你什么时候能像正常人一样坐办公室。",
+          "speaker": "zhi"
+        },
+        {
+          "text": "她蹲下来，对着湿的地面拍了一张倒影。"
+        },
+        {
+          "text": "你也觉得我该找个正常工作吗？",
+          "speaker": "zhi"
+        }
+      ],
+      "choices": [
+        {
+          "text": "「你妈说得对，但你可以两样都要。」",
+          "target": "zhi_settle",
+          "effects": [
+            [
+              "zhi",
+              "+=",
+              1
+            ]
+          ],
+          "lines": [
+            {
+              "text": "她笑出声，回头就给你拍了一张。"
+            },
+            {
+              "text": "这句话值一张。",
+              "speaker": "zhi"
+            }
+          ]
+        },
+        {
+          "text": "「四年都没放弃，说明你还没拍完。」",
+          "target": "zhi_settle",
+          "effects": [
+            [
+              "zhi",
+              "+=",
+              1
+            ]
+          ],
+          "lines": [
+            {
+              "text": "……",
+              "speaker": "zhi"
+            },
+            {
+              "text": "你说话真难听，但是我爱听。",
+              "speaker": "zhi"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "zhi_settle",
+      "label": "结算",
+      "tags": {
+        "bg": "bg_street_afternoon"
+      },
+      "lines": [],
+      "diverts": [
+        {
+          "cond": [
+            [
+              "zhi",
+              ">=",
+              3
+            ]
+          ],
+          "target": "end_zhi_true"
+        }
+      ],
+      "next": "end_zhi_pass"
+    },
+    {
+      "id": "end_zhi_true",
+      "label": "结局·栀",
+      "tags": {
+        "cg": "cg_end_zhi",
+        "sprite": "zhi:smile"
+      },
+      "lines": [
+        {
+          "text": "半年后，城南一间小画廊，《等一个不会来的人·四十分钟》。"
+        },
+        {
+          "text": "一共十二张，全是同一个下午、同一张桌子拍的。三杯咖啡从冒热气到彻底凉透。"
+        },
+        {
+          "text": "最后一张是你推门进来的那一秒，糊的，因为她手抖了。"
+        },
+        {
+          "text": "我妈来了，站那儿看了四十分钟。",
+          "speaker": "zhi"
+        },
+        {
+          "text": "她问我最后这张糊的是谁。",
+          "speaker": "zhi"
+        },
+        {
+          "text": "那你说，我该怎么答？",
+          "speaker": "zhi"
+        }
+      ],
+      "next": "END"
+    },
+    {
+      "id": "end_zhi_pass",
+      "label": "结局·擦肩",
+      "tags": {
+        "sprite": "zhi:sad"
+      },
+      "lines": [
+        {
+          "text": "她把那张拍你的照片删了，当着你的面，按了两下。"
+        },
+        {
+          "text": "废片就不留了，职业习惯。",
+          "speaker": "zhi"
+        },
+        {
+          "text": "她背上包，走之前敲了敲桌子：「下次别让人等。」"
+        },
+        {
+          "text": "后来你在她的展上看到过那张桌子，三杯咖啡，四把椅子。"
+        },
+        {
+          "text": "其中一把是空的。"
+        }
+      ],
+      "next": "END"
+    },
+    {
+      "id": "wan_1",
+      "label": "晚一",
+      "tags": {
+        "bg": "bg_cafe_table",
+        "sprite": "wan:shy"
+      },
+      "lines": [
+        {
+          "text": "林晚把那本书从包里拿出来又放回去，来回三次。"
+        },
+        {
+          "text": "我两点就到了。",
+          "speaker": "wan"
+        },
+        {
+          "text": "我怕堵车。也怕……没话说，所以带了本书。",
+          "speaker": "wan"
+        },
+        {
+          "text": "结果一页都没翻。",
+          "speaker": "wan"
+        }
+      ],
+      "choices": [
+        {
+          "text": "「你提前了一个小时，那本书一页都没翻？」",
+          "target": "wan_2",
+          "effects": [
+            [
+              "wan",
+              "+=",
+              1
+            ]
+          ],
+          "lines": [
+            {
+              "text": "因为一直在看门口。",
+              "speaker": "wan"
+            },
+            {
+              "text": "她说完自己愣了一下，耳朵红了。"
+            }
+          ]
+        },
+        {
+          "text": "「点三杯咖啡，也是怕说错？」",
+          "target": "wan_2",
+          "effects": [
+            [
+              "wan",
+              "+=",
+              1
+            ]
+          ],
+          "lines": [
+            {
+              "text": "嗯。",
+              "speaker": "wan"
+            },
+            {
+              "text": "我不知道你喜欢哪种，就每种都点了。",
+              "speaker": "wan"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "wan_2",
+      "label": "晚二",
+      "tags": {
+        "bg": "bg_cafe_corner",
+        "sprite": "wan:normal"
+      },
+      "lines": [
+        {
+          "text": "她终于把书放在桌上。封面已经翻软了，边角起了毛。"
+        },
+        {
+          "text": "我开旧书店，第十一年。",
+          "speaker": "wan"
+        },
+        {
+          "text": "我爸留下的。他说，一家店最要紧的不是卖东西，是让人有地方待着。",
+          "speaker": "wan"
+        },
+        {
+          "text": "今天下午，我就是在给别人当那个地方。",
+          "speaker": "wan"
+        }
+      ],
+      "choices": [
+        {
+          "text": "「所以你不介意她们俩一直在这儿？」",
+          "target": "wan_3",
+          "effects": [
+            [
+              "wan",
+              "+=",
+              1
+            ]
+          ],
+          "lines": [
+            {
+              "text": "不介意。",
+              "speaker": "wan"
+            },
+            {
+              "text": "而且说实话，四十分钟里我们仨聊得挺好的。",
+              "speaker": "wan"
+            }
+          ]
+        },
+        {
+          "text": "「那你自己呢？谁给你当那个地方？」",
+          "target": "wan_3",
+          "lines": [
+            {
+              "text": "她低头看着书，很久没说话。"
+            },
+            {
+              "text": "……还没有。",
+              "speaker": "wan"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "wan_3",
+      "label": "晚三",
+      "tags": {
+        "bg": "bg_cafe_dusk",
+        "cg": "cg_wan",
+        "sprite": "wan:weary"
+      },
+      "lines": [
+        {
+          "text": "天快黑了。她把那本翻软的书往你这边推了推。"
+        },
+        {
+          "text": "这本一直没卖出去，十一年。",
+          "speaker": "wan"
+        },
+        {
+          "text": "我后来就不标价了。",
+          "speaker": "wan"
+        },
+        {
+          "text": "你要是想要，可以拿走。",
+          "speaker": "wan"
+        }
+      ],
+      "choices": [
+        {
+          "text": "「那我不白拿。下周我去店里，你教我怎么摆书。」",
+          "target": "wan_settle",
+          "effects": [
+            [
+              "wan",
+              "+=",
+              1
+            ]
+          ],
+          "lines": [
+            {
+              "text": "那要很多天。",
+              "speaker": "wan"
+            },
+            {
+              "text": "你不嫌烦的话。",
+              "speaker": "wan"
+            }
+          ]
+        },
+        {
+          "text": "「你留着吧。十一年了，别为了今天下午送人。」",
+          "target": "wan_settle",
+          "lines": [
+            {
+              "text": "好。",
+              "speaker": "wan"
+            },
+            {
+              "text": "她把书抱回怀里，笑了一下，很浅。"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "wan_settle",
+      "label": "结算",
+      "tags": {
+        "bg": "bg_cafe_dusk"
+      },
+      "lines": [],
+      "diverts": [
+        {
+          "cond": [
+            [
+              "wan",
+              ">=",
+              3
+            ]
+          ],
+          "target": "end_wan_true"
+        }
+      ],
+      "next": "end_wan_pass"
+    },
+    {
+      "id": "end_wan_true",
+      "label": "结局·晚",
+      "tags": {
+        "cg": "cg_end_wan",
+        "sprite": "wan:smile"
+      },
+      "lines": [
+        {
+          "text": "一年后，「晚来」旧书店多了一张靠窗的桌，和一台二手咖啡机。"
+        },
+        {
+          "text": "菜单上只有一样东西：美式，一次上三杯，写着「等人套餐」。"
+        },
+        {
+          "text": "来问的人都说这个名字奇怪。",
+          "speaker": "wan"
+        },
+        {
+          "text": "我就说，是纪念一个迟到了四十分钟的人。",
+          "speaker": "wan"
+        },
+        {
+          "text": "她把第三杯推到你面前，手指在杯壁上停了一下，没有收回去。"
+        }
+      ],
+      "next": "END"
+    },
+    {
+      "id": "end_wan_pass",
+      "label": "结局·擦肩",
+      "tags": {
+        "sprite": "wan:sad"
+      },
+      "lines": [
+        {
+          "text": "她把书抱在怀里，站起来，说要赶在六点前回店里关门。"
+        },
+        {
+          "text": "今天谢谢你。真的。",
+          "speaker": "wan"
+        },
+        {
+          "text": "走到门口她停了一下，像是要说什么，最后只说了「路上小心」。"
+        },
+        {
+          "text": "半年后你路过那条街，卷帘门上贴着一张纸：本店已迁，地址不详。"
+        }
+      ],
+      "next": "END"
+    }
+  ],
+  "endings": [
+    "end_zhao_true",
+    "end_zhao_pass",
+    "end_zhi_true",
+    "end_zhi_pass",
+    "end_wan_true",
+    "end_wan_pass"
+  ]
+}

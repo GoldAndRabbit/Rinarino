@@ -1,0 +1,29 @@
+{
+  "story": "americano",
+  "title": "三杯凉掉的美式",
+  "subtitle": "INK · 分支恋爱",
+  "shape": "romance_branch",
+  "tagline": "介绍人把时间排重了，三个相亲对象同时到场——而你迟到了四十分钟。",
+  "cover": "cg_three",
+  "vars": {
+    "zhao": { "label": "陆昭 · 好感", "hidden": false },
+    "zhi": { "label": "夏栀 · 好感", "hidden": false },
+    "wan": { "label": "林晚 · 好感", "hidden": false }
+  },
+  "endings": {
+    "end_zhao_true": { "title": "已超时，无限期顺延", "character": "zhao", "kind": "true" },
+    "end_zhao_pass": { "title": "她一直没打伞", "character": "zhao", "kind": "pass" },
+    "end_zhi_true": { "title": "最后那张是糊的", "character": "zhi", "kind": "true" },
+    "end_zhi_pass": { "title": "空着的那把椅子", "character": "zhi", "kind": "pass" },
+    "end_wan_true": { "title": "等人套餐", "character": "wan", "kind": "true" },
+    "end_wan_pass": { "title": "本店已迁，地址不详", "character": "wan", "kind": "pass" }
+  },
+  "ui": {
+    "narrator": "旁白",
+    "next": "下一步",
+    "prev": "上一步",
+    "restart": "重开",
+    "music_on": "音乐 开",
+    "music_off": "音乐 关"
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "story": "seventhlamp",
+  "title": "第七盏灯",
+  "subtitle": "INK · 推理",
+  "shape": "mystery",
+  "tagline": "馆长死在一幅明天要开展的画前。三个嫌疑人，三份对得太齐的口供，你只有一个上午。",
+  "cover": "cg_scene",
+  "vars": {
+    "clue": { "label": "掌握的证据", "hidden": false }
+  },
+  "endings": {
+    "end_true": { "title": "绢的年份差了六十年", "character": "wei", "kind": "true" },
+    "end_weak": { "title": "一起电路火灾", "character": "wei", "kind": "pass" },
+    "end_wrong_jiang": { "title": "锁进档案室的两年", "character": "jiang", "kind": "pass" },
+    "end_wrong_chen": { "title": "那层灰是匀的", "character": "chen", "kind": "pass" }
+  },
+  "ui": {
+    "narrator": "旁白",
+    "next": "下一步",
+    "prev": "上一步",
+    "restart": "重开",
+    "music_on": "音乐 开",
+    "music_off": "音乐 关"
+  }
+}

@@ -1,0 +1,102 @@
+# LLM API（OpenAI 兼容）。鉴权环境变量名由代码约定，不写在本文件：
+#   - 阿里云百炼  ：ALIYUN_BAILIAN_API_KEY   （文本：deepseek）
+#   - DeepSeek 官方：DEEPSEEK_API_KEY
+#   - SiliconFlow ：SILICONFLOW_API_KEY
+#   - 火山引擎方舟：ARK_API_KEY              （生图 + 视频）
+
+# 去哪儿找 .env。按顺序找，先到先得；真实环境变量始终优先。
+# 邻仓的 .env 是**只读的借用**——key 不复制一份到本仓，源头轮换了这边跟着变。
+# 覆盖方式：设 RINARINO_ENV_FILE 指一个文件，或改下面这张表。
+env_files:
+  - .env
+  - ../pitchasso/.env
+  - ../uhwoo/.env
+
+aliyun:
+  base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+  default_model: deepseek-v4-flash
+  models:
+    - deepseek-v4-flash
+    - deepseek-v4
+    - qwen3.8-flash
+
+deepseek:
+  base_url: https://api.deepseek.com/v1
+  default_model: deepseek-chat
+  models:
+    - deepseek-chat
+    - deepseek-reasoner
+
+siliconflow:
+  base_url: https://api.siliconflow.cn/v1
+  default_model: deepseek-ai/DeepSeek-V3
+
+# 流水线里所有「写文本」的段（story / cast / meta / amb prompt）统一用这一段配置。
+#   enable_thinking: 这里每次要的是一段 JSON 或 ink，关掉思考更快更便宜。
+vn:
+  provider: aliyun
+  model: deepseek-v4-flash
+  models:
+    - deepseek-v4-flash
+    - deepseek-v4
+  enable_thinking: false
+  timeout: 180
+
+# 生图端：火山引擎方舟 Seedream（env ARK_API_KEY），参考 pitchasso 的调用方式。
+#   size: Seedream 5.0 要求 ≥3.7MP，16:9 达标最小 2560x1440；立绘用竖版。
+#   没配 key 时 s3 自动退回 placeholder 生成器，全链路照样跑通，产物是占位图。
+ark:
+  base_url: https://ark.cn-beijing.volces.com/api/v3
+  image_model: doubao-seedream-5-0-pro-260628
+  models:
+    - doubao-seedream-5-0-pro-260628     # 5.0 pro，默认
+    - doubao-seedream-5-0-260128         # 5.0 全量
+    - doubao-seedream-4-5-251128
+    - doubao-seedream-4-0-250828
+  watermark: false
+  timeout: 180
+  # 出图比例必须和播放框一致，否则 object-fit 要么裁掉人要么拉变形。
+  # 播放框是 4:5 竖版（见 frontend/css/app.css 的 .screen-art），所以背景和 CG 都按 4:5 出。
+  # 方舟的硬限制：下限 3,686,400 像素，上限 4,624,220 像素（超了直接 400）。
+  # 下面每一档都是在这个区间里、按该比例能取到的最大值——像素是白给的，不用白不用。
+  sizes:
+    bg: 1920x2400           # 4:5   4.61MP
+    cg: 1920x2400           # 4:5   4.61MP
+    est: 2864x1608          # 16:9  4.60MP
+    sprite: 1608x2856       # 9:16  4.59MP
+
+# 视频端：火山引擎方舟 Seedance（异步任务制，env 同样是 ARK_API_KEY）。
+#   duration 秒；generate_audio 让它连着音轨一起出，过场视频就不用再配环境声。
+seedance:
+  base_url: https://ark.cn-beijing.volces.com/api/v3
+  model: doubao-seedance-2-5-260628
+  ratio: "16:9"
+  duration: 5
+  generate_audio: true
+  watermark: false
+  timeout: 120
+  poll_interval: 5
+  poll_timeout: 900
+
+# 价格。只用来在开跑前把账报出来（[art_plan] 需要 33 张，约 ¥7.26），
+# 不参与任何计费逻辑——真实账单以控制台为准。
+# 官方价目表 https://docs.volcengine.com/docs/82379/1544106 ，改了价记得回来同步。
+pricing:
+  currency: CNY
+  updated: "2026-09-11"
+
+  # 元/张。按**成功出图**计费，审核不过或失败的不计。
+  image:
+    doubao-seedream-5-0-260128: 0.22
+    doubao-seedream-5-0-pro-260628: 0.22   # 公开价目表里没单列，暂按 5.0 全量记
+    doubao-seedream-4-5-251128: 0.25
+    doubao-seedream-4-0-250828: 0.20
+    default: 0.22
+
+  # 元/秒。Seedance 实际按 token 计，这里折成秒只为报账好读。
+  # 2.5 没查到单独定价，参照 Seedance 2.0 的「约 1 元 1 秒」估。
+  video:
+    doubao-seedance-2-5-260628: 1.0
+    default: 1.0
+
+  # 文本（deepseek）这一段的花费相比素材可以忽略（整部小说不到一毛），故不列。

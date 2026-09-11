@@ -1,0 +1,37 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "后端",
+      "type": "shell",
+      "command": "uv run uvicorn backend.app.main:app --reload --port 8811",
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    { "label": "uv sync", "type": "shell", "command": "uv sync", "problemMatcher": [] },
+    {
+      "label": "pytest",
+      "type": "shell",
+      "command": "uv run pytest",
+      "group": { "kind": "test", "isDefault": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "流水线：整条",
+      "type": "shell",
+      "command": "uv run python -m vn_workflow.pipeline --name ${input:story}",
+      "problemMatcher": []
+    },
+    {
+      "label": "流水线：只报账",
+      "type": "shell",
+      "command": "uv run python -m vn_workflow.pipeline --name ${input:story} --dry-run",
+      "problemMatcher": []
+    },
+    { "label": "ruff check", "type": "shell", "command": "uv run ruff check .", "problemMatcher": [] },
+    { "label": "ruff format", "type": "shell", "command": "uv run ruff format .", "problemMatcher": [] }
+  ],
+  "inputs": [
+    { "id": "story", "type": "promptString", "description": "小说名", "default": "americano" }
+  ]
+}

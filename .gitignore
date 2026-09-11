@@ -1,0 +1,18 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*.egg-info/
+build/
+dist/
+.DS_Store
+.env
+
+# 产物：素材和打包结果不进仓库。
+# 真源是 story.ink / cast.json 那几个文本文件，素材是它们的确定性产物——
+# 命名即缓存，重跑 s3 就有。只留 prompts.json：它记着每张图真正用过的 prompt。
+vn/dist/
+vn/stories/*/assets/*
+!vn/stories/*/assets/prompts.json
