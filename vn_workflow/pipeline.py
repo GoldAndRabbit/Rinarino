@@ -7,6 +7,9 @@
     # 只重跑某一类素材
     uv run python -m vn_workflow.pipeline --name island --only sprite --force
 
+    # 改了 vars.yaml 的画风之后，把它套到已有的作品上（设定不动）
+    uv run python -m vn_workflow.pipeline --name island --only restyle --only art --force
+
     # 只报账不动手
     uv run python -m vn_workflow.pipeline --name island --dry-run
 
@@ -28,6 +31,7 @@ from . import (
     s1_gen_story,
     s1_lint_ink,
     s2_gen_cast,
+    s2_restyle,
     s3_gen_art,
     s3_lint_art,
     s4_gen_video,
@@ -38,9 +42,13 @@ from . import (
 
 # --only 认的名字。前六个是段，后面几个是第 3 段的四类素材和两道闸门。
 STAGES = ("story", "cast", "art", "video", "amb", "music", "build")
+# 只认名字才跑的一段：全量流程里不出现，否则每次重跑都会把手改过的 style 冲掉
+OPT_IN = ("restyle",)
+# 报账那行按**执行顺序**印，restyle 夹在 cast 和 art 中间
+ORDER = ("story", "cast", "restyle", "art", "video", "amb", "music", "build")
 ART_KINDS = ("bg", "est", "cg", "sprite")
 GATES = ("artlint",)
-SELECTABLE = (*STAGES, *ART_KINDS, *GATES)
+SELECTABLE = (*STAGES, *OPT_IN, *ART_KINDS, *GATES)
 
 
 def resolve(only: list[str]) -> tuple[set[str], set[str]]:
@@ -53,13 +61,14 @@ def resolve(only: list[str]) -> tuple[set[str], set[str]]:
         stages.add("art")
     if "artlint" in only:
         stages.add("artlint")
+    stages |= {o for o in only if o in OPT_IN}
     return stages, kinds
 
 
 def report(story: Story, stages: set[str], kinds: set[str]) -> None:
     """开跑前把账报出来，免得 --force 刷掉了什么心里没数。"""
     print(f"[plan] {story.name} → {story.dir}")
-    print(f"[plan] 要跑：{', '.join(s for s in (*STAGES, *GATES) if s in stages)}")
+    print(f"[plan] 要跑：{', '.join(s for s in (*ORDER, *GATES) if s in stages)}")
     if kinds:
         print(f"[plan] 第 3 段只做：{', '.join(sorted(kinds))}")
 
@@ -115,6 +124,12 @@ async def run(
             print("[cast] dry-run")
         else:
             await s2_gen_cast.run(story, keep_meta=keep_meta)
+
+    # 2.5 restyle：只把 house_style 换到 art_direction 上，设定一个字不动。
+    # 不进全量流程——`--only restyle` 才跑，否则每次重跑都会把手改过的 style 冲掉。
+    if "restyle" in stages:
+        step("2.5 restyle · 换画风")
+        s2_restyle.run(story, dry_run=dry_run)
 
     # 3 art
     if "art" in stages:

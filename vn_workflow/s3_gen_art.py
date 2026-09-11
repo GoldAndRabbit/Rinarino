@@ -66,24 +66,34 @@ def _compose(art: dict[str, Any], subject: str, *, kind: Kind, extra: str = "") 
         subject.strip(),
         extra.strip(),
         art.get("palette", ""),
-        art.get("lighting", ""),
+        # 立绘不拼 lighting：那是**场景**的光（「咖啡馆 2700K 暖黄 + 窗外 5500K 冷光」）。
+        # 二次元取向下它只是气氛词，写实取向下模型会当真去搭一个房间——
+        # 实测立绘被画成办公室实景，边缘一点白都没有，flood fill 直接抠不动。
+        art.get("lighting", "") if kind != "sprite" else "",
     ]
     if kind == "sprite":
         parts.append(
-            "全身立绘，9:16 竖构图，人物完整入画且居中，"
-            # 这三条是给去背用的硬要求：模型很爱自作主张加一片带色地面或环境光，
-            # 加了之后 flood fill 抠不掉（它只认近白），立绘上就糊着一块彩色。
-            "背景为纯白 #FFFFFF 均匀底色，不要地面、不要投影、不要渐变、不要环境色溢出，"
-            "高精度细节：五官清晰锐利，发丝分明，衣料质感与褶皱清楚，线稿干净"
+            "全身立绘，9:16 竖构图，从头顶到鞋子完整入画且居中，"
+            # 去背的硬要求。写实取向下这里要**压过** style 里的实景倾向：
+            # 只说「纯白背景」不够，模型会理解成「白墙的房间」，得把拍法整个指定死。
+            "影棚棚拍，人物站在纯白 #FFFFFF 无缝背景纸前，背景完全过曝为纯白，"
+            "画面里没有房间、没有家具、没有窗户、没有街景、没有前景遮挡物，"
+            "不要地面、不要投影、不要渐变、不要环境色溢出，"
+            "高精度细节：五官清晰锐利，发丝一根根分明，皮肤有质感不磨皮，衣料织纹与褶皱清楚，没有线稿和描边，"
+            # 景深糊的是手和脚——立绘要整张合焦，虚化只给场景
+            "人物从头到脚全部合焦，不要景深虚化"
         )
     elif kind == "est":
-        parts.append("16:9 横构图，定场镜头，画面中不出现文字，" + _EMPTY_STAGE)
+        parts.append("16:9 横构图，定场镜头，浅景深，画面中不出现文字，" + _EMPTY_STAGE)
     elif kind == "bg":
-        # 背景是拿来垫立绘的舞台，画里但凡有个人，立绘一站上去就变成「背后藏了个人」
-        parts.append("4:5 竖构图，场景插画，主体居中且完整入画，画面中不出现文字，" + _EMPTY_STAGE)
+        # 背景是拿来垫立绘的舞台：画里但凡有个人，立绘一站上去就变成「背后藏了个人」；
+        # 浅景深则正好把前面那张合焦的立绘从背景里推出来
+        parts.append(
+            "4:5 竖构图，写实场景，浅景深，主体居中且完整入画，画面中不出现文字，" + _EMPTY_STAGE
+        )
     else:
         # 播放框是 4:5，出图就按 4:5——主体居中、留出上下余量，才不会被裁到
-        parts.append("4:5 竖构图，场景插画，主体居中且完整入画，画面中不出现文字")
+        parts.append("4:5 竖构图，写实场景，浅景深，主体居中且完整入画，画面中不出现文字")
     if avoid := art.get("avoid"):
         parts.append(f"避免：{avoid}")
     return "，".join(p.strip().strip("，") for p in parts if p and p.strip())
@@ -128,7 +138,7 @@ def build_plan(story: Story) -> list[ArtJob]:
         jobs.append(scene_job(cid, desc, "cg"))
 
     # 第一个角色的 normal 是**全局风格锚**：它先画，之后每个角色的 normal 都拿它
-    # 当参考图。不这么做的话三个角色各画各的，一个出成半写实、另两个出成卡通，
+    # 当参考图。不这么做的话三个角色各画各的，一个出成照片写实、另两个出成插画，
     # 摆在同一张 CG 里就穿帮了。表情图再参考本角色自己的 normal。
     anchor = f"sprite_{characters[0]['key']}_normal" if characters else ""
 
