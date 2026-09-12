@@ -31,7 +31,7 @@ def test_sprite_prompt_carries_the_full_look():
     job = next(j for j in s3_gen_art.build_plan(STORY) if j.id == "sprite_zhi_shy")
     # 外观逐字段进 prompt，这是同人一致性的第一道保证
     assert "焦糖橙色灯芯绒" in job.prompt
-    assert "纯白" in job.prompt
+    assert "绿幕" in job.prompt
     assert job.seed() == job.seed()  # 同一张图重跑是同一个 seed
 
 
@@ -151,7 +151,7 @@ def test_sprite_prompt_pins_down_the_background():
     写实取向下还多一条：人像的构图惯例是裁到半身，「全身」得连不要什么一起说死。
     """
     job = next(j for j in s3_gen_art.build_plan(STORY) if j.kind == "sprite")
-    for must in ("纯白", "没有地面", "没有接触阴影", "不是半身像"):
+    for must in ("绿幕", "没有地面", "没有接触阴影", "不是半身像"):
         assert must in job.prompt
 
 

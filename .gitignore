@@ -16,6 +16,9 @@ dist/
 vn/dist/
 vn/stories/*/assets/*
 !vn/stories/*/assets/prompts.json
+# 模型原样给的那张（立绘带绿幕）。留着是为了改了去背算法能免费重抠，
+# 但它比成品还大，更不该进仓库。
+vn/stories/*/raw/
 
 # 静态站产物：scripts/build_site.py 从上面那些东西现算，不进仓库
 site/

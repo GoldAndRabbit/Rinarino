@@ -172,68 +172,68 @@ async def generate_png(
     raise RuntimeError(f"Seedream 重试耗尽: {last}")
 
 
-def _bg_walk(
-    im: Image.Image, tolerance: int, halo: int, *, smooth: int = 6, flat_max: int = 3
-) -> Image.Image:
-    """从四边往里走，吃掉背景，返回硬蒙版（255 前景 / 0 背景）。
+# 色度键背景。立绘一律在这个绿幕前拍，抠图按**色距**判，不看亮度。
+#
+# 为什么不再用白底 flood fill：白底下「背景」和「白衣服」在像素上是同一种东西，
+# 分不开。试过的判据全部失败——四周亮度（陷落的背景 145–198 vs 布料高光 223–237）、
+# 局部纹理（2.7–3.4 vs 3.8–8.0）、有多白（246 vs 252，还是反的）——三组区间全都重叠。
+# 白衬衫会被打成筛子，白球鞋会被啃穿，米色西装夹住的背景抠不掉。
+# 换成衣服上不可能出现的饱和绿之后，判据退化成一个减法，没有任何启发式。
+CHROMA = (0, 177, 64)  # #00B140，标准色度键绿
+# 阈值按实测的分布定，不是拍脑袋：一张典型立绘里，背景的「绿超出量」（绿减去红蓝的
+# 较大者）扎堆在 90–96，人物身上基本 ≤19，中间的 20–79 只占 0.5%——那是抗锯齿过渡带。
+# 所以砍在 70、保在 30，两边都留了三十多的余量。
+# 早先设成 40/12 的后果：模型给球鞋画了点薄荷配色，整块被当成绿幕抠掉，鞋上一个洞。
+# 75 是量出来的分界：被手臂和头围住、连不到画面边缘的那块背景是 81，
+# 而球鞋上那道薄荷配色是 56–69。卡在中间，两边各留六七的余量。
+CHROMA_PURE = 75  # 超出这么多 → 一定是背景，不管连不连得到外面
+CHROMA_BG = 60  # 连到画面边缘、又有这么绿 → 也是背景，整个抠掉
+CHROMA_SOFT = 30  # 超出不到这么多 → 一定是前景；30~60 且连到外面的按比例给半透明
 
-    三档标准，都只从画面边缘连通地走，所以人物身上的白衬衫（不挨着边）动不了：
-      1. 近白：随便走多远——模型给的底色本来就是纯白
-      2. 平滑无纹理的浅色：也随便走多远。写实取向下模型爱画一片影棚地面加接触
-         阴影，那片东西从 243 一路渐变到 156，第 1 档够不着、第 3 档走不完。
-         但它的两个特征很好认：相邻像素**差不了几级**（渐变），而且局部**没有结构**
-         （极差近 0）。鞋带、缝线、鞋底边这些都是高极差，走到那儿就停——
-         白球鞋因此能囫囵留下来，而地面被一路吃穿。
-      3. 浅色低饱和：只准再走 halo 像素——模型很爱在白底上刷一圈米色的
-         柔光 / 投影，那圈东西不近白，前两档都不收，抠完就挂着一条浅色轮廓边。
-         限步数是因为夏栀有一双白球鞋：不限的话会从鞋边一路啃进鞋里。
+
+def cutout(png: bytes, *, feather: bool = True) -> bytes:
+    """立绘去背：绿幕色度键 + 去溢色。
+
+    判据用两个信号，缺一不可——只看颜色会把衣服上的绿配色一起抠掉，
+    只看连通性会留下腋下和两腿之间夹着的背景：
+
+      1. **纯背景色**（绿超出量 ≥ CHROMA_PURE）：全局抠。夹在身体之间的背景
+         连不到画面边缘，只能靠颜色认出来。
+      2. **连到画面边缘、又够绿的**（≥ CHROMA_BG）：整个抠掉，不按比例。
+         影棚地面附近的绿幕在阴影里只有 71–81，够不着第 1 档；要是按比例给半透明，
+         画面底下就留一条 alpha 30 的灰带子，闸门还会把它当成「人被裁断」。
+      3. **发丝那一段**（CHROMA_SOFT ~ CHROMA_BG 且连到外面）：按绿超出量给半透明。
+         头发边缘本来就是半透明地过渡过去的，一刀切会留一圈硬边。
+         注意这三档都靠连通性兜底：衣服上的淡绿配色（实测球鞋上一道薄荷条纹
+         是 50–85）被鞋包着连不出去，所以一根汗毛都不会少。
+      4. 去溢色：绿幕会把绿光反到人物边缘，把绿通道压到红蓝的较大者即可——
+         对本来就不发绿的像素是恒等变换，所以整张无脑做。
     """
     from PIL import ImageFilter
 
+    im = Image.open(io.BytesIO(png)).convert("RGBA")
     w, h = im.size
     px = im.load()
     assert px is not None
 
-    white = 255 - tolerance
+    excess = [[0] * w for _ in range(h)]
+    for y in range(h):
+        row = excess[y]
+        for x in range(w):
+            r, g, b, _ = px[x, y]
+            hi = max(r, b)
+            row[x] = g - hi
+            if g > hi:
+                px[x, y] = (r, hi, b, 255)  # 去溢色
 
-    # 局部极差图：一次算完，循环里只查表
-    grey = im.convert("L")
-    hi_px = grey.filter(ImageFilter.MaxFilter(3)).load()
-    lo_px = grey.filter(ImageFilter.MinFilter(3)).load()
-    assert hi_px is not None and lo_px is not None
-
-    def near_white(x: int, y: int) -> bool:
-        r, g, b, _ = px[x, y]
-        return r >= white and g >= white and b >= white
-
-    def pale(x: int, y: int) -> bool:
-        r, g, b, _ = px[x, y]
-        lo, hi = min(r, g, b), max(r, g, b)
-        return lo >= 168 and hi - lo <= 42
-
-    def lum(x: int, y: int) -> int:
-        r, g, b, _ = px[x, y]
-        return (r * 2 + g * 5 + b) // 8
-
-    def gradient(x: int, y: int) -> bool:
-        """浅到能当背景、平到没有结构——地面和投影长这样，鞋子不长这样。"""
-        r, g, b, _ = px[x, y]
-        lo, hi = min(r, g, b), max(r, g, b)
-        return lo >= 140 and hi - lo <= 42 and hi_px[x, y] - lo_px[x, y] <= flat_max
-
-    # budget: 还能在「浅色低饱和」里走几步；近白像素随时把它充满
-    budget = bytearray(w * h)
-    seen = bytearray(w * h)
-    queue: deque[tuple[int, int, int]] = deque()
+    # 从四边沿着「够绿」的像素走，标出哪些中间带像素是连到外面的
+    outside = [bytearray(w) for _ in range(h)]
+    queue: deque[tuple[int, int]] = deque()
 
     def seed(x: int, y: int) -> None:
-        i = y * w + x
-        if seen[i]:
-            return
-        if near_white(x, y):
-            seen[i] = 1
-            budget[i] = halo
-            queue.append((x, y, halo))
+        if excess[y][x] >= CHROMA_SOFT and not outside[y][x]:
+            outside[y][x] = 1
+            queue.append((x, y))
 
     for x in range(w):
         seed(x, 0)
@@ -241,142 +241,26 @@ def _bg_walk(
     for y in range(h):
         seed(0, y)
         seed(w - 1, y)
+    while queue:
+        x, y = queue.popleft()
+        for nx, ny in ((x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)):
+            if 0 <= nx < w and 0 <= ny < h:
+                seed(nx, ny)
 
     mask = Image.new("L", (w, h), 255)
     mpx = mask.load()
     assert mpx is not None
-    while queue:
-        x, y, left = queue.popleft()
-        mpx[x, y] = 0
-        for nx, ny in ((x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)):
-            if not (0 <= nx < w and 0 <= ny < h):
-                continue
-            i = ny * w + nx
-            if near_white(nx, ny):
-                nleft = halo
-            elif gradient(nx, ny) and abs(lum(nx, ny) - lum(x, y)) <= smooth:
-                nleft = left  # 顺着渐变走不扣预算：地面有多宽就吃多宽
-            elif halo and pale(nx, ny) and left > 0:
-                nleft = left - 1
-            else:
-                continue
-            # 走过一次还不够：从别的方向来可能剩的步数更多，够就再走一遍
-            if seen[i] and budget[i] >= nleft:
-                continue
-            seen[i] = 1
-            budget[i] = nleft
-            queue.append((nx, ny, nleft))
-    return mask
+    span = CHROMA_BG - CHROMA_SOFT
+    for y in range(h):
+        row = excess[y]
+        out_row = outside[y]
+        for x in range(w):
+            e = row[x]
+            if e >= CHROMA_PURE or (out_row[x] and e >= CHROMA_BG):
+                mpx[x, y] = 0
+            elif e > CHROMA_SOFT and out_row[x]:
+                mpx[x, y] = 255 * (CHROMA_BG - e) // span
 
-
-def _fill_white_holes(
-    im: Image.Image,
-    mask: Image.Image,
-    *,
-    max_area: float = 0.01,
-    dark_border: int = 120,
-    probe: int = 6,
-) -> None:
-    """把**发丝之间围出来的白洞**也抠掉（原地改 mask）。
-
-    从四边走进不去的白：一缕一缕的碎发之间夹着的那些白块。不抠掉的话贴到深色
-    背景上，人物头上就顶着一团一团的白斑——比边缘毛刺显眼得多。
-    但「围起来的白」也可能是奶白 T 恤、白衬衫，所以卡三道：
-      1. 只认**很白**（比外面那档严得多），米白奶白都不算
-      2. 只认**小块**（默认画面的 0.25%），衣服那种大片白一律留着
-      3. 只认**四周是深色**的。这一道是写实取向逼出来的：真丝衬衫的高光能打到
-         242 以上，又被门襟和褶皱切成一小块一小块，前两道全都拦不住——一件好好的
-         衬衫会被打成筛子。而发间白洞的四周必然是头发，深得多。所以看这块白的
-         **边界颜色**：浅色包着的是布料高光，留下；深色包着的才是发间的洞，抠掉。
-
-    第 3 道要**往前景里探几个像素**再取样，不能贴着边取。白块和深色衣服之间隔着
-    一条抗锯齿过渡带，紧挨着的那一圈永远是中间调（实测两腿之间那条白带贴边取样
-    是 213，往里探 6 像素才看到裤子的 49）。贴边取样等于在量羽化边，什么都判成浅色。
-    """
-    w, h = im.size
-    px = im.load()
-    mpx = mask.load()
-    assert px is not None and mpx is not None
-    limit = int(w * h * max_area)
-
-    def very_white(x: int, y: int) -> bool:
-        r, g, b = px[x, y][:3]
-        return min(r, g, b) >= 242 and max(r, g, b) - min(r, g, b) <= 10
-
-    seen = bytearray(w * h)
-    for y0 in range(h):
-        row = y0 * w
-        for x0 in range(w):
-            if seen[row + x0] or mpx[x0, y0] == 0 or not very_white(x0, y0):
-                continue
-            seen[row + x0] = 1
-            blob = [(x0, y0)]
-            border: list[int] = []
-            queue: deque[tuple[int, int]] = deque(blob)
-            while queue:
-                x, y = queue.popleft()
-                for nx, ny in ((x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)):
-                    if not (0 <= nx < w and 0 <= ny < h):
-                        continue
-                    i = ny * w + nx
-                    if seen[i]:
-                        continue
-                    if mpx[nx, ny] == 0 or not very_white(nx, ny):
-                        # 走不进去的邻居就是这块白的边界。前景那侧的颜色要记下来：
-                        # 深色 = 头发夹着的洞，浅色 = 布料上的高光
-                        if mpx[nx, ny] != 0:
-                            fx, fy = x + (nx - x) * probe, y + (ny - y) * probe
-                            if 0 <= fx < w and 0 <= fy < h and mpx[fx, fy] != 0:
-                                r, g, b = px[fx, fy][:3]
-                                border.append((r * 2 + g * 5 + b) // 8)
-                        continue
-                    seen[i] = 1
-                    queue.append((nx, ny))
-                    blob.append((nx, ny))
-            # 整块走完再判：中途退出的话这块剩下的部分下一轮会被当成新的一块，
-            # 一件白衬衫就会被一口一口啃掉
-            around = sum(border) / len(border) if border else 255
-            if len(blob) <= limit and around < dark_border:
-                for x, y in blob:
-                    mpx[x, y] = 0
-
-
-def _soft_edge(im: Image.Image, hard: Image.Image, *, band: int = 5) -> Image.Image:
-    """把硬边界内侧一条带子里的**残留白边**改成半透明。
-
-    发丝、睫毛这种细节在白底上是半透明地过渡过去的，一刀切的蒙版会把过渡段
-    整片留成不透明的白，贴到深色背景上就是一圈毛边。所以在边界带里按「有多白」
-    重新定 alpha：越接近纯白越透明。只在带子里做，人物内部的浅色衣服不受影响。
-    """
-    from PIL import ImageChops, ImageFilter
-
-    r, g, b = im.convert("RGB").split()
-    lo = ImageChops.darker(ImageChops.darker(r, g), b)
-    # lo >= 250 → 全透明；lo <= 198 → 全不透明；中间线性过渡
-    soft = lo.point(lambda v: 255 if v <= 198 else (0 if v >= 250 else (250 - v) * 255 // 52))
-    inner = hard.filter(ImageFilter.MinFilter(2 * band + 1))
-    edge = ImageChops.subtract(hard, inner)
-    # 带子外面不设限（取 255），带子里面取 soft
-    relaxed = ImageChops.lighter(soft, ImageChops.invert(edge))
-    return ImageChops.darker(hard, relaxed)
-
-
-def cutout(png: bytes, *, tolerance: int = 26, feather: bool = True, halo: int = 12) -> bytes:
-    """立绘去背：从四边 flood fill 掉与画面边缘连通的背景，再修一遍边。
-
-    只做**边缘连通域**是关键：人物身上的白衬衫不挨着边，不会被一起抠掉。
-    试过改成「和邻居比色差」的区域生长（想顺带吃掉模型自作主张画的彩色地面），
-    结果它会顺着柔和的轮廓边缘一路啃进人物内部——前景占比从 43% 涨到 93%。
-    所以那条路走不通；现在吃**白色影棚地面**靠的是 _bg_walk 的第 2 档
-    （平滑 + 无纹理，见那儿的说明），它只沿着没有结构的渐变走，碰到鞋带缝线就停。
-    真·彩色地面还是在 prompt 那头解（见 s3_gen_art 的背景要求）。
-    """
-    from PIL import ImageFilter
-
-    im = Image.open(io.BytesIO(png)).convert("RGBA")
-    hard = _bg_walk(im, tolerance, halo)
-    _fill_white_holes(im, hard)
-    mask = _soft_edge(im, hard)
     if feather:
         mask = mask.filter(ImageFilter.GaussianBlur(0.8))
     im.putalpha(mask)
@@ -385,18 +269,35 @@ def cutout(png: bytes, *, tolerance: int = 26, feather: bool = True, halo: int =
     return buf.getvalue()
 
 
-def recut(png: bytes, **kw: Any) -> bytes:
-    """对**已经抠过**的图重抠一遍：先把透明的地方填回纯白，再走一次 cutout。
+def green_residue(cut: bytes, raw: bytes | None = None) -> float:
+    """留下来的像素里还有多少其实是绿幕。抠干净了应该接近 0。
 
-    改了去背算法之后不用重新花钱生图——原图的背景本来就是白的，
-    填回白色就等价于拿到了模型当初给的那张。
+    要拿**原图的颜色**来判：去溢色会把残留背景的绿通道一起压掉，只看成品的话
+    一片没抠干净的背景会被洗成灰的，指标读到 0——等于自己把探测器蒙上了。
+    没有原图就退回看成品，聊胜于无。
     """
-    im = Image.open(io.BytesIO(png)).convert("RGBA")
-    flat = Image.new("RGBA", im.size, (255, 255, 255, 255))
-    flat.alpha_composite(im)
-    buf = io.BytesIO()
-    flat.convert("RGB").save(buf, "PNG")
-    return cutout(buf.getvalue(), **kw)
+    im = Image.open(io.BytesIO(cut)).convert("RGBA").resize((160, 160))
+    src = im if raw is None else Image.open(io.BytesIO(raw)).convert("RGB").resize((160, 160))
+    alpha = im.getchannel("A")
+    # 只看**实心留下**的像素（alpha > 200）和**明显是背景色**的（超出 > 40）。
+    # 半透明的边和头发边缘压在绿幕上本来就带绿，算进来会把噪声抬到百分之几。
+    kept = [(x, y) for y in range(160) for x in range(160) if alpha.getpixel((x, y)) > 200]
+    if not kept:
+        return 0.0
+    hits = 0
+    for x, y in kept:
+        r, g, b = src.getpixel((x, y))[:3]
+        if g - max(r, b) > 40:
+            hits += 1
+    return hits / len(kept)
+
+
+def recut(png: bytes, **kw: Any) -> bytes:
+    """重抠一遍。要拿**模型原样给的那张**（带绿幕的），不能拿抠过的成品——
+    绿幕一旦抠掉就找不回来了，所以 s3 会把原图留在 assets/.raw/ 下（见 s3_gen_art）。
+    改了去背算法之后从那儿重跑，不用重新花钱生图。
+    """
+    return cutout(png, **kw)
 
 
 def foreground_ratio(png: bytes) -> float:

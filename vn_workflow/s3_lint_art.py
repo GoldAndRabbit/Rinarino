@@ -6,7 +6,7 @@
   缺图     —— plan 里有、目录里没有
   画幅     —— 背景 / CG 不是 16:9，立绘不是竖版
   亮度     —— 整张过曝或全黑，或者干脆是一块纯色
-  去背     —— 立绘没有 alpha，或者边缘没抠干净
+  去背     —— 立绘没有 alpha、边缘没抠干净，或者身上还留着绿幕没抠掉
   底边     —— 脚下的地面没抠掉，或者人被裁成了半身像（写实取向下这两样最常见）
   一致性   —— 同一个角色的各张表情图主色调漂得太远（换了衣服 / 换了人）
 
@@ -33,6 +33,9 @@ HUE_DRIFT = 0.22
 # 超过就是出事了，再看那截东西是什么颜色来分是哪一种事（见 _check_one）。
 BOTTOM_WIDE = 0.40
 BOTTOM_PALE = 0.55
+# 抠干净的立绘实测在 0.2% 以下（口径见 image_api.green_residue）。1% 是出事线：
+# 没抠掉的那块青绿曾经是 1.7%。
+GREEN_RESIDUE = 0.01
 
 
 class Issue:
@@ -90,6 +93,7 @@ def _stats(path: Path) -> dict[str, Any] | None:
         "std": std,
         "avg": avg,
         "edge_transparent": sum(1 for p in edge if p[3] < 32) / len(edge),
+        "green": 0.0,  # 立绘单独算，要拿 raw/ 的原色判（见 _check_one 的调用处）
         "bottom_width": bottom_width,
         "bottom_pale": bottom_pale / bottom_n if bottom_n else 0.0,
     }
@@ -122,6 +126,10 @@ def _check_one(job: ArtJob, path: Path, stats: dict[str, Any]) -> list[Issue]:
                     job.id,
                 )
             )
+        # 绿幕没抠干净：留下来的像素里还有原本是绿幕的。这条比边缘那圈环灵敏得多——
+        # 它查的是**整张**，抠漏在哪儿都跑不掉。
+        if (green := stats["green"]) > GREEN_RESIDUE:
+            out.append(Issue("error", "green", f"身上有 {green:.1%} 的像素还发绿", job.id))
         # 边缘那圈环看不见脚下：地面残留在画面中下部，四边可能干干净净。
         # 所以底边单独判一次，再按颜色分成两种病。
         if stats["bottom_width"] > BOTTOM_WIDE:
@@ -163,6 +171,14 @@ def run(story: Story, *, verbose: bool = True) -> list[Issue]:
         stats = _stats(path)
         if stats is None:
             continue
+        if job.kind == "sprite":
+            # 绿残留要拿原图的颜色判：去溢色会把没抠干净的背景洗成灰的，
+            # 只看成品会读到 0。没有 raw/ 的（换绿幕之前生成的）这条就跳过。
+            raw = story.raw / path.name
+            if raw.exists():
+                from util import image_api
+
+                stats["green"] = image_api.green_residue(path.read_bytes(), raw.read_bytes())
         stats_by_id[job.id] = stats
         issues += _check_one(job, path, stats)
 

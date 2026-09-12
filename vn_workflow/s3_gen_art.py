@@ -77,14 +77,19 @@ def _compose(art: dict[str, Any], subject: str, *, kind: Kind, extra: str = "") 
             # 只写「全身立绘」会得到一张齐腰截断的胸像。
             "全身立绘，9:16 竖构图，居中，从头顶到鞋子完整入画，两只鞋都完整可见，"
             "不是半身像、不是胸像、不是特写，不在腰部或膝盖裁切，"
-            # 去背的硬要求。写实取向下这里要**压过** style 里的实景倾向：
-            # 只说「纯白背景」不够，模型会理解成「白墙的房间」，得把拍法整个指定死。
-            # 但**不能说「无缝背景纸」**——摄影里那东西自带一条地面扫尾，
-            # 模型会照着画出地面和接触阴影，浅灰的地面 flood fill 吃不掉（它只认近白）。
-            "影棚人像棚拍，背景是完全均匀的纯白 #FFFFFF，从头顶到脚下是同一片纯白，"
-            "没有地面、没有地平线、没有接触阴影、没有影子，鞋底以下也是纯白，"
-            "画面里没有房间、没有家具、没有窗户、没有街景、没有前景遮挡物，"
-            "不要渐变、不要环境色溢出，"
+            # 去背的硬要求。背景是**绿幕**不是白底：白底下「背景」和「白衣服」在像素上
+            # 是同一种东西，白衬衫会被打成筛子、白球鞋会被啃穿、米色西装夹住的背景抠不掉
+            # （判据全试过，三组区间都重叠，见 util.image_api.CHROMA 那段）。
+            # 换成衣服上不可能出现的饱和绿，抠图就退化成一个减法。
+            # 另外**不能说「无缝背景纸」**——摄影里那东西自带一条地面扫尾，
+            # 模型会照着画出地面和接触阴影。
+            "影棚人像棚拍，背景是完全均匀的纯正绿幕 #00B140 色度键背景，"
+            "从头顶到脚下是同一片饱和绿，没有地面、没有地平线、没有接触阴影、没有影子，"
+            "鞋底以下也是同一片绿，画面里没有房间、没有家具、没有窗户、没有街景、"
+            "没有前景遮挡物，不要渐变，"
+            # 绿幕会把绿光反到浅色衣服上，说清楚免得整件衣服被染绿——
+            # 去溢色只能救边缘，救不了大面积染色
+            "人物身上和衣服上不带任何绿色调，不要绿色反光，"
             "高精度细节：五官清晰锐利，发丝一根根分明，皮肤有质感不磨皮，衣料织纹与褶皱清楚，没有线稿和描边，"
             # 景深糊的是手和脚——立绘要整张合焦，虚化只给场景
             "人物从头到脚全部合焦，不要景深虚化"
@@ -250,12 +255,35 @@ async def render(
         job.prompt, kind=job.kind, seed=job.seed(), ref_images=ref_images, model=model
     )
     if job.kind == "sprite":
+        # 绿幕原图先留一份再抠：抠完绿就没了，以后调算法只能靠它，
+        # 否则改一次去背就要把所有立绘重新花钱生一遍
+        story.raw.mkdir(parents=True, exist_ok=True)
+        (story.raw / job.filename).write_bytes(png)
         png = image_api.cutout(png)
     out = story.asset(job.filename)
     out.write_bytes(png)
     # 真素材落地，同名占位图就不该再留着
     story.asset(f"{job.id}.svg").unlink(missing_ok=True)
     return out
+
+
+def recut_all(story: Story, *, verbose: bool = True) -> int:
+    """拿 raw/ 里的绿幕原图把所有立绘重抠一遍。改了去背算法之后走这个，不花钱。"""
+    if not story.raw.is_dir():
+        if verbose:
+            print(f"[recut] {story.name} 没有 raw/，这些立绘是换绿幕之前生成的，只能重画")
+        return 0
+    n = 0
+    for src in sorted(story.raw.glob("sprite_*.png")):
+        original = src.read_bytes()
+        png = image_api.cutout(original)
+        story.asset(src.name).write_bytes(png)
+        n += 1
+        if verbose:
+            print(f"  ✓ {src.stem}  绿残留 {image_api.green_residue(png, original):.2%}")
+    if verbose:
+        print(f"[recut] {story.name} 重抠了 {n} 张")
+    return n
 
 
 def existing(story: Story, job: ArtJob) -> Path | None:
@@ -385,12 +413,16 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--force", action="store_true")
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("-j", "--concurrency", type=int, default=4, help="并发张数")
+    ap.add_argument("--recut", action="store_true", help="不生图，拿 raw/ 的原图重抠一遍")
     ap.add_argument("--model", default=None, help="覆盖 config 里的 image_model")
     args = ap.parse_args(argv if argv is not None else sys.argv[1:])
     story = Story(args.name)
     if not story.exists():
         print(f"没有这部小说：{story.dir}", file=sys.stderr)
         return 1
+    if args.recut:
+        recut_all(story)
+        return 0
     asyncio.run(
         run(
             story,

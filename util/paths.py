@@ -24,6 +24,13 @@ class Story:
     def assets(self) -> Path:
         return self.dir / "assets"
 
+    @property
+    def raw(self) -> Path:
+        """模型原样给的那张图（立绘带着绿幕）。和 assets/ 平级而不是放在里面——
+        放进去会被打包和静态站当成素材一起端出去。留着它，改了去背算法就能
+        免费重抠（见 util.image_api.recut），不用重新花钱生图。"""
+        return self.dir / "raw"
+
     def path(self, filename: str) -> Path:
         return self.dir / filename
 
