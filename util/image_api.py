@@ -269,14 +269,20 @@ def _bg_walk(
     return mask
 
 
-def _fill_white_holes(im: Image.Image, mask: Image.Image, *, max_area: float = 0.0025) -> None:
+def _fill_white_holes(
+    im: Image.Image, mask: Image.Image, *, max_area: float = 0.0025, dark_border: int = 120
+) -> None:
     """把**发丝之间围出来的白洞**也抠掉（原地改 mask）。
 
     从四边走进不去的白：一缕一缕的碎发之间夹着的那些白块。不抠掉的话贴到深色
     背景上，人物头上就顶着一团一团的白斑——比边缘毛刺显眼得多。
-    但「围起来的白」也可能是奶白 T 恤、白衬衫，所以卡两道：
+    但「围起来的白」也可能是奶白 T 恤、白衬衫，所以卡三道：
       1. 只认**很白**（比外面那档严得多），米白奶白都不算
       2. 只认**小块**（默认画面的 0.25%），衣服那种大片白一律留着
+      3. 只认**四周是深色**的。这一道是写实取向逼出来的：真丝衬衫的高光能打到
+         242 以上，又被门襟和褶皱切成一小块一小块，前两道全都拦不住——一件好好的
+         衬衫会被打成筛子。而发间白洞的四周必然是头发，深得多。所以看这块白的
+         **边界颜色**：浅色包着的是布料高光，留下；深色包着的才是发间的洞，抠掉。
     """
     w, h = im.size
     px = im.load()
@@ -296,6 +302,7 @@ def _fill_white_holes(im: Image.Image, mask: Image.Image, *, max_area: float = 0
                 continue
             seen[row + x0] = 1
             blob = [(x0, y0)]
+            border: list[int] = []
             queue: deque[tuple[int, int]] = deque(blob)
             while queue:
                 x, y = queue.popleft()
@@ -303,14 +310,22 @@ def _fill_white_holes(im: Image.Image, mask: Image.Image, *, max_area: float = 0
                     if not (0 <= nx < w and 0 <= ny < h):
                         continue
                     i = ny * w + nx
-                    if seen[i] or mpx[nx, ny] == 0 or not very_white(nx, ny):
+                    if seen[i]:
+                        continue
+                    if mpx[nx, ny] == 0 or not very_white(nx, ny):
+                        # 走不进去的邻居就是这块白的边界。前景那侧的颜色要记下来：
+                        # 深色 = 头发夹着的洞，浅色 = 布料上的高光
+                        if mpx[nx, ny] != 0:
+                            r, g, b = px[nx, ny][:3]
+                            border.append((r * 2 + g * 5 + b) // 8)
                         continue
                     seen[i] = 1
                     queue.append((nx, ny))
                     blob.append((nx, ny))
             # 整块走完再判：中途退出的话这块剩下的部分下一轮会被当成新的一块，
             # 一件白衬衫就会被一口一口啃掉
-            if len(blob) <= limit:
+            around = sum(border) / len(border) if border else 255
+            if len(blob) <= limit and around < dark_border:
                 for x, y in blob:
                     mpx[x, y] = 0
 

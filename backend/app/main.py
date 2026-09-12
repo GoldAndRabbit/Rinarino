@@ -48,7 +48,11 @@ def api_asset(name: str, filename: str) -> FileResponse:
     path = stories.resolve_asset(name, filename)
     if path is None:
         raise HTTPException(status_code=404, detail=f"没有这个素材：{name}/{filename}")
-    return FileResponse(path, headers={"Cache-Control": "public, max-age=3600"})
+    # no-cache 不是「不缓存」，是「每次回来问一句」：浏览器带着 ETag 来，
+    # 没变就 304（几十字节），变了才重传。素材 URL 里不带 hash，改了图文件名不变,
+    # 所以给 max-age 就等于让本地开发时看到的是一小时前的素材——改完图刷新也不变，
+    # 只有硬刷新才管用。线上不靠这个头：Pages 自己按内容哈希管缓存。
+    return FileResponse(path, headers={"Cache-Control": "no-cache"})
 
 
 if FRONTEND.is_dir():
