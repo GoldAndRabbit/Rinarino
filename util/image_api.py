@@ -270,7 +270,12 @@ def _bg_walk(
 
 
 def _fill_white_holes(
-    im: Image.Image, mask: Image.Image, *, max_area: float = 0.0025, dark_border: int = 120
+    im: Image.Image,
+    mask: Image.Image,
+    *,
+    max_area: float = 0.01,
+    dark_border: int = 120,
+    probe: int = 6,
 ) -> None:
     """把**发丝之间围出来的白洞**也抠掉（原地改 mask）。
 
@@ -283,6 +288,10 @@ def _fill_white_holes(
          242 以上，又被门襟和褶皱切成一小块一小块，前两道全都拦不住——一件好好的
          衬衫会被打成筛子。而发间白洞的四周必然是头发，深得多。所以看这块白的
          **边界颜色**：浅色包着的是布料高光，留下；深色包着的才是发间的洞，抠掉。
+
+    第 3 道要**往前景里探几个像素**再取样，不能贴着边取。白块和深色衣服之间隔着
+    一条抗锯齿过渡带，紧挨着的那一圈永远是中间调（实测两腿之间那条白带贴边取样
+    是 213，往里探 6 像素才看到裤子的 49）。贴边取样等于在量羽化边，什么都判成浅色。
     """
     w, h = im.size
     px = im.load()
@@ -316,8 +325,10 @@ def _fill_white_holes(
                         # 走不进去的邻居就是这块白的边界。前景那侧的颜色要记下来：
                         # 深色 = 头发夹着的洞，浅色 = 布料上的高光
                         if mpx[nx, ny] != 0:
-                            r, g, b = px[nx, ny][:3]
-                            border.append((r * 2 + g * 5 + b) // 8)
+                            fx, fy = x + (nx - x) * probe, y + (ny - y) * probe
+                            if 0 <= fx < w and 0 <= fy < h and mpx[fx, fy] != 0:
+                                r, g, b = px[fx, fy][:3]
+                                border.append((r * 2 + g * 5 + b) // 8)
                         continue
                     seen[i] = 1
                     queue.append((nx, ny))
