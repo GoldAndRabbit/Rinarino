@@ -16,3 +16,6 @@ dist/
 vn/dist/
 vn/stories/*/assets/*
 !vn/stories/*/assets/prompts.json
+
+# 静态站产物：scripts/build_site.py 从上面那些东西现算，不进仓库
+site/

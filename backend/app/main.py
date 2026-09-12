@@ -27,12 +27,15 @@ def health() -> dict[str, object]:
     return {"ok": True, "stories": len(stories.list_stories())}
 
 
-@app.get("/api/stories")
+# 路径带 .json 后缀不是洁癖：整站要能静态化（scripts/build_site.py 把这两个接口
+# 落成同名文件发到 CF Pages）。「/api/stories」既当文件又当目录是做不到的，
+# 所以索引和单部各占一条不冲突的路径，dev 和线上共用同一套 URL。
+@app.get("/api/stories.json")
 def api_stories() -> list[dict[str, object]]:
     return stories.list_stories()
 
 
-@app.get("/api/stories/{name}")
+@app.get("/api/story/{name}.json")
 def api_story(name: str) -> dict[str, object]:
     payload = stories.load_story(name)
     if payload is None:

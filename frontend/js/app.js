@@ -154,7 +154,7 @@ function draw() {
 }
 
 async function open(name) {
-  state.payload = await json(`/api/stories/${encodeURIComponent(name)}`);
+  state.payload = await json(`/api/story/${encodeURIComponent(name)}.json`);
   state.engine = new Engine(state.payload.story);
   state.tab = 'main';
   player.bind(state.payload);
@@ -239,7 +239,7 @@ document.addEventListener('keydown', (ev) => {
 
 (async function boot() {
   try {
-    state.list = await json('/api/stories');
+    state.list = await json('/api/stories.json');
     renderRail();
     if (state.list.length) await open(state.list[0].name);
     else $('#stage-title').textContent = '还没有小说';

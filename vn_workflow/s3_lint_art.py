@@ -7,6 +7,7 @@
   画幅     —— 背景 / CG 不是 16:9，立绘不是竖版
   亮度     —— 整张过曝或全黑，或者干脆是一块纯色
   去背     —— 立绘没有 alpha，或者边缘没抠干净
+  底边     —— 脚下的地面没抠掉，或者人被裁成了半身像（写实取向下这两样最常见）
   一致性   —— 同一个角色的各张表情图主色调漂得太远（换了衣服 / 换了人）
 
 占位图（.svg）跳过判定：它本来就不是要看的东西。
@@ -28,6 +29,10 @@ DARK, BRIGHT = 0.06, 0.94
 FLAT_STD = 0.02
 EDGE_ALPHA = 0.55
 HUE_DRIFT = 0.22
+# 立绘底边那条带子：人站着时底下只有两只鞋，占不到画面一半宽。
+# 超过就是出事了，再看那截东西是什么颜色来分是哪一种事（见 _check_one）。
+BOTTOM_WIDE = 0.40
+BOTTOM_PALE = 0.55
 
 
 class Issue:
@@ -55,16 +60,38 @@ def _stats(path: Path) -> dict[str, Any] | None:
     std = (sum((v - mean) ** 2 for v in lum) / len(lum)) ** 0.5
     opaque = [p for p in px if p[3] > 32] or px
     avg = tuple(sum(c[i] for c in opaque) / len(opaque) / 255 for i in range(3))
+    # 立绘抠完背之后，透明区的 RGB 是黑的（PNG 把全透明像素归零），
+    # 拿整张算亮度等于在量那片黑——深色衣服的立绘会被误判成「整张全黑」。
+    # 所以立绘的亮度只看不透明的那部分。
+    mean_opaque = sum((0.2126 * r + 0.7152 * g + 0.0722 * b) / 255 for r, g, b, _ in opaque) / len(
+        opaque
+    )
     edge = [px[i] for i in range(64)] + [px[64 * 63 + i] for i in range(64)]
     edge += [px[r * 64] for r in range(64)] + [px[r * 64 + 63] for r in range(64)]
+
+    # 最底下两行：各行不透明像素占多宽，以及这些像素里「浅色低饱和」占多少。
+    # 宽而浅 = 脚下挂着没抠掉的地面；宽而实 = 人被裁断了，底边是身体。
+    bottom_width, bottom_pale, bottom_n = 0.0, 0, 0
+    for row in (62, 63):
+        line = [px[row * 64 + c] for c in range(64)]
+        solid = [p for p in line if p[3] > 32]
+        bottom_width = max(bottom_width, len(solid) / 64)
+        bottom_n += len(solid)
+        bottom_pale += sum(
+            1 for r, g, b, _ in solid if min(r, g, b) >= 168 and max(r, g, b) - min(r, g, b) <= 42
+        )
+
     return {
         "w": w,
         "h": h,
         "alpha": has_alpha,
         "mean": mean,
+        "mean_opaque": mean_opaque,
         "std": std,
         "avg": avg,
         "edge_transparent": sum(1 for p in edge if p[3] < 32) / len(edge),
+        "bottom_width": bottom_width,
+        "bottom_pale": bottom_pale / bottom_n if bottom_n else 0.0,
     }
 
 
@@ -76,8 +103,9 @@ def _check_one(job: ArtJob, path: Path, stats: dict[str, Any]) -> list[Issue]:
         out.append(
             Issue("error", "aspect", f"画幅 {stats['w']}x{stats['h']}，期望比例 {want:.2f}", job.id)
         )
-    if stats["mean"] < DARK:
-        out.append(Issue("error", "too-dark", f"整张几乎全黑（亮度 {stats['mean']:.3f}）", job.id))
+    lit = stats["mean_opaque"] if job.kind == "sprite" else stats["mean"]
+    if lit < DARK:
+        out.append(Issue("error", "too-dark", f"整张几乎全黑（亮度 {lit:.3f}）", job.id))
     elif stats["mean"] > BRIGHT and job.kind != "sprite":
         out.append(Issue("error", "too-bright", f"整张过曝（亮度 {stats['mean']:.3f}）", job.id))
     if stats["std"] < FLAT_STD:
@@ -94,6 +122,27 @@ def _check_one(job: ArtJob, path: Path, stats: dict[str, Any]) -> list[Issue]:
                     job.id,
                 )
             )
+        # 边缘那圈环看不见脚下：地面残留在画面中下部，四边可能干干净净。
+        # 所以底边单独判一次，再按颜色分成两种病。
+        if stats["bottom_width"] > BOTTOM_WIDE:
+            if stats["bottom_pale"] > BOTTOM_PALE:
+                out.append(
+                    Issue(
+                        "error",
+                        "ground",
+                        f"底边 {stats['bottom_width']:.0%} 宽是浅色，脚下的地面/投影没抠掉",
+                        job.id,
+                    )
+                )
+            else:
+                out.append(
+                    Issue(
+                        "error",
+                        "cropped",
+                        f"底边 {stats['bottom_width']:.0%} 宽都是人，多半被裁成了半身像",
+                        job.id,
+                    )
+                )
     return out
 
 

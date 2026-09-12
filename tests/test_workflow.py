@@ -146,9 +146,12 @@ def test_expression_pose_reaches_the_prompt():
 
 
 def test_sprite_prompt_pins_down_the_background():
-    """模型很爱自作主张加一片带色地面，加了 flood fill 就抠不掉。"""
+    """模型很爱自作主张加一片带色地面，加了 flood fill 就抠不掉。
+
+    写实取向下还多一条：人像的构图惯例是裁到半身，「全身」得连不要什么一起说死。
+    """
     job = next(j for j in s3_gen_art.build_plan(STORY) if j.kind == "sprite")
-    for must in ("纯白", "不要地面", "不要投影"):
+    for must in ("纯白", "没有地面", "没有接触阴影", "不是半身像"):
         assert must in job.prompt
 
 

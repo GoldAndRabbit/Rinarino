@@ -172,20 +172,35 @@ async def generate_png(
     raise RuntimeError(f"Seedream 重试耗尽: {last}")
 
 
-def _bg_walk(im: Image.Image, tolerance: int, halo: int) -> Image.Image:
+def _bg_walk(
+    im: Image.Image, tolerance: int, halo: int, *, smooth: int = 6, flat_max: int = 3
+) -> Image.Image:
     """从四边往里走，吃掉背景，返回硬蒙版（255 前景 / 0 背景）。
 
-    两档标准，都只从画面边缘连通地走，所以人物身上的白衬衫（不挨着边）动不了：
+    三档标准，都只从画面边缘连通地走，所以人物身上的白衬衫（不挨着边）动不了：
       1. 近白：随便走多远——模型给的底色本来就是纯白
-      2. 浅色低饱和：只准再走 halo 像素——模型很爱在白底上刷一圈米色的
-         柔光 / 投影，那圈东西不近白，老标准吃不掉，抠完就挂着一条浅色轮廓边。
+      2. 平滑无纹理的浅色：也随便走多远。写实取向下模型爱画一片影棚地面加接触
+         阴影，那片东西从 243 一路渐变到 156，第 1 档够不着、第 3 档走不完。
+         但它的两个特征很好认：相邻像素**差不了几级**（渐变），而且局部**没有结构**
+         （极差近 0）。鞋带、缝线、鞋底边这些都是高极差，走到那儿就停——
+         白球鞋因此能囫囵留下来，而地面被一路吃穿。
+      3. 浅色低饱和：只准再走 halo 像素——模型很爱在白底上刷一圈米色的
+         柔光 / 投影，那圈东西不近白，前两档都不收，抠完就挂着一条浅色轮廓边。
          限步数是因为夏栀有一双白球鞋：不限的话会从鞋边一路啃进鞋里。
     """
+    from PIL import ImageFilter
+
     w, h = im.size
     px = im.load()
     assert px is not None
 
     white = 255 - tolerance
+
+    # 局部极差图：一次算完，循环里只查表
+    grey = im.convert("L")
+    hi_px = grey.filter(ImageFilter.MaxFilter(3)).load()
+    lo_px = grey.filter(ImageFilter.MinFilter(3)).load()
+    assert hi_px is not None and lo_px is not None
 
     def near_white(x: int, y: int) -> bool:
         r, g, b, _ = px[x, y]
@@ -195,6 +210,16 @@ def _bg_walk(im: Image.Image, tolerance: int, halo: int) -> Image.Image:
         r, g, b, _ = px[x, y]
         lo, hi = min(r, g, b), max(r, g, b)
         return lo >= 168 and hi - lo <= 42
+
+    def lum(x: int, y: int) -> int:
+        r, g, b, _ = px[x, y]
+        return (r * 2 + g * 5 + b) // 8
+
+    def gradient(x: int, y: int) -> bool:
+        """浅到能当背景、平到没有结构——地面和投影长这样，鞋子不长这样。"""
+        r, g, b, _ = px[x, y]
+        lo, hi = min(r, g, b), max(r, g, b)
+        return lo >= 140 and hi - lo <= 42 and hi_px[x, y] - lo_px[x, y] <= flat_max
 
     # budget: 还能在「浅色低饱和」里走几步；近白像素随时把它充满
     budget = bytearray(w * h)
@@ -229,6 +254,8 @@ def _bg_walk(im: Image.Image, tolerance: int, halo: int) -> Image.Image:
             i = ny * w + nx
             if near_white(nx, ny):
                 nleft = halo
+            elif gradient(nx, ny) and abs(lum(nx, ny) - lum(x, y)) <= smooth:
+                nleft = left  # 顺着渐变走不扣预算：地面有多宽就吃多宽
             elif halo and pale(nx, ny) and left > 0:
                 nleft = left - 1
             else:
@@ -314,7 +341,8 @@ def cutout(png: bytes, *, tolerance: int = 26, feather: bool = True, halo: int =
     只做**边缘连通域**是关键：人物身上的白衬衫不挨着边，不会被一起抠掉。
     试过改成「和邻居比色差」的区域生长（想顺带吃掉模型自作主张画的彩色地面），
     结果它会顺着柔和的轮廓边缘一路啃进人物内部——前景占比从 43% 涨到 93%。
-    所以彩色地面这个问题不在这儿解：浅色的柔光/投影交给 _bg_walk 的限步数第二档，
+    所以那条路走不通；现在吃**白色影棚地面**靠的是 _bg_walk 的第 2 档
+    （平滑 + 无纹理，见那儿的说明），它只沿着没有结构的渐变走，碰到鞋带缝线就停。
     真·彩色地面还是在 prompt 那头解（见 s3_gen_art 的背景要求）。
     """
     from PIL import ImageFilter

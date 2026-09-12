@@ -15,13 +15,13 @@ def test_health():
 
 
 def test_list_stories():
-    items = client.get("/api/stories").json()
+    items = client.get("/api/stories.json").json()
     assert items and all({"name", "title", "nodes", "endings"} <= set(i) for i in items)
 
 
 def test_story_payload_is_self_contained():
-    name = client.get("/api/stories").json()[0]["name"]
-    data = client.get(f"/api/stories/{name}").json()
+    name = client.get("/api/stories.json").json()[0]["name"]
+    data = client.get(f"/api/story/{name}.json").json()
     # 前端一次取完就能播完：剧本、素材索引、设定表、界面文案都在里面
     assert data["story"]["nodes"] and data["assets"] and data["cast"]["characters"]
     assert data["meta"]["title"]
@@ -32,12 +32,12 @@ def test_story_payload_is_self_contained():
 
 
 def test_missing_story_is_404():
-    assert client.get("/api/stories/nope").status_code == 404
+    assert client.get("/api/story/nope.json").status_code == 404
 
 
 def test_asset_served():
-    name = client.get("/api/stories").json()[0]["name"]
-    url = next(iter(client.get(f"/api/stories/{name}").json()["assets"].values()))
+    name = client.get("/api/stories.json").json()[0]["name"]
+    url = next(iter(client.get(f"/api/story/{name}.json").json()["assets"].values()))
     assert client.get(url).status_code == 200
 
 
@@ -54,8 +54,8 @@ def test_character_page_renders_structured_expressions():
     assert "spec?.表情" in src and "spec?.动作" in src, "角色页要分别取出两段"
     assert "${esc(desc)}" not in src, "别再把整个对象往模板里塞"
 
-    name = client.get("/api/stories").json()[0]["name"]
-    cast = client.get(f"/api/stories/{name}").json()["cast"]
+    name = client.get("/api/stories.json").json()[0]["name"]
+    cast = client.get(f"/api/story/{name}.json").json()["cast"]
     for ch in cast["characters"]:
         for key, spec in ch["expressions"].items():
             assert isinstance(spec, dict), f"{ch['name']}.{key} 该是对象"
