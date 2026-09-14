@@ -8,6 +8,7 @@
   亮度     —— 整张过曝或全黑，或者干脆是一块纯色
   去背     —— 立绘没有 alpha、边缘没抠干净，或者身上还留着绿幕没抠掉
   底边     —— 脚下的地面没抠掉，或者人被裁成了半身像（写实取向下这两样最常见）
+  过期     —— 磁盘上这张是按旧 prompt 画的：生成失败留下的旧图，或改了设定 / 画风还没重画
   一致性   —— 同一个角色的各张表情图主色调漂得太远（换了衣服 / 换了人）
 
 占位图（.svg）跳过判定：它本来就不是要看的东西。
@@ -156,6 +157,7 @@ def _check_one(job: ArtJob, path: Path, stats: dict[str, Any]) -> list[Issue]:
 
 def run(story: Story, *, verbose: bool = True) -> list[Issue]:
     jobs = build_plan(story)
+    manifest: dict[str, Any] = story.read_json("assets/prompts.json", {}) or {}
     issues: list[Issue] = []
     stats_by_id: dict[str, dict[str, Any]] = {}
     placeholders = 0
@@ -181,6 +183,14 @@ def run(story: Story, *, verbose: bool = True) -> list[Issue]:
                 stats["green"] = image_api.green_residue(path.read_bytes(), raw.read_bytes())
         stats_by_id[job.id] = stats
         issues += _check_one(job, path, stats)
+        # 生图失败时旧文件原样留着，画幅、去背、绿残留这些闸门全都照过。换画风重画那次，
+        # seventhlamp 有 16 张因为账户欠费没画成，闸门照样报「全过」，页面上就是两种画风混着。
+        # 唯一靠得住的判据是 prompt 本身：这张当初真正用的，和 plan 现在给的，对不对得上。
+        used = (manifest.get(job.id) or {}).get("prompt")
+        if used is not None and used != job.prompt:
+            issues.append(
+                Issue("warn", "stale", "这张是按旧 prompt 画的，要 --force 重画才会跟上", job.id)
+            )
 
     # 同人一致性：同一个角色的各张表情图，主色调不该漂得太远
     by_char: dict[str, list[tuple[str, tuple[float, ...]]]] = {}

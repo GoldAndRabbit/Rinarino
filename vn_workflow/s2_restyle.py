@@ -7,8 +7,9 @@
 
 这一段只动 art_direction：
 
-  style  ← house_style 逐字覆盖
-  avoid  ← 并进反向画风词（旧的一条都不删）
+  style        ← house_style 逐字覆盖
+  avoid_style  ← house_avoid 整段换掉
+  avoid        ← 只留这部作品自己的忌讳，上一版取向留下的画风词摘掉
 
 角色、背景、CG、videos 一个字不碰。跑完再 `--only art --force` 重画就行，
 剧本和设定都还是原来那部。
@@ -26,32 +27,47 @@ from typing import Any
 from util import prompts
 from util.paths import Story
 
-# 拼进正文的负面词。写实取向下这几条是**反向画风词**：模型只要往二次元飘一点，
-# 它们就把它拽回来。和 avoid 里原有的词是并集——旧的都是这部作品自己的忌讳
-# （多余人物、畸形手指、过曝…），换画风不该把它们一起丢掉。
-STYLE_AVOID = ("卡通", "线稿", "描边", "厚涂", "插画风", "二次元", "赛璐璐平涂")
+# 负面词分两段存：avoid_style 是画风层的（换取向时整段换掉），avoid 是这部作品
+# 自己的忌讳（多余人物、畸形手指、过曝…），换画风不该把它们丢掉。
+#
+# 分开之前的那一版把画风词直接并进了 avoid。下面这几个就是当时写进去的写实取向
+# 反向词，迁移时从 avoid 里摘掉——留着的话「避免：厚涂、插画风」会和新取向正面对打。
+_LEGACY_STYLE_AVOID = ("卡通", "线稿", "描边", "厚涂", "插画风", "二次元", "赛璐璐平涂")
 
 
-def restyle(art: dict[str, Any], house_style: str) -> tuple[dict[str, Any], list[str]]:
-    """返回改过的 art_direction 和「这次加了哪些负面词」。"""
+def _split(raw: Any) -> list[str]:
+    if isinstance(raw, (list, tuple)):
+        return [str(w).strip() for w in raw if str(w).strip()]
+    return [w.strip() for w in str(raw or "").split("、") if w.strip()]
+
+
+def restyle(
+    art: dict[str, Any], house_style: str, house_avoid: list[str]
+) -> tuple[dict[str, Any], list[str]]:
+    """返回改过的 art_direction 和「从 avoid 里摘掉了哪些旧画风词」。"""
     art = dict(art)
     art["style"] = house_style
-    old = [w.strip() for w in str(art.get("avoid", "")).split("、") if w.strip()]
-    added = [w for w in STYLE_AVOID if w not in old]
-    art["avoid"] = "、".join([*STYLE_AVOID, *old]) if added else art.get("avoid", "")
-    return art, added
+    stale = set(_LEGACY_STYLE_AVOID) | set(_split(art.get("avoid_style")))
+    own = _split(art.get("avoid"))
+    dropped = [w for w in own if w in stale]
+    art["avoid"] = "、".join(w for w in own if w not in stale)
+    art["avoid_style"] = "、".join(house_avoid)
+    return art, dropped
 
 
 def run(story: Story, *, dry_run: bool = False, verbose: bool = True) -> dict[str, Any]:
     cast = story.read_json("cast.json")
-    house_style = " ".join(str(prompts.defaults().get("house_style", "")).split())
+    defaults = prompts.defaults()
+    house_style = " ".join(str(defaults.get("house_style", "")).split())
     if not house_style:
         raise SystemExit("[restyle] vars.yaml 里没有 house_style")
+    house_avoid = _split(defaults.get("house_avoid"))
 
-    art, added = restyle(cast.get("art_direction") or {}, house_style)
+    art, dropped = restyle(cast.get("art_direction") or {}, house_style, house_avoid)
     if verbose:
         print(f"[restyle] {story.name} style ← house_style（{len(house_style)} 字）")
-        print(f"[restyle] avoid 补了：{'、'.join(added) or '无，已经都在了'}")
+        print(f"[restyle] avoid_style ← {art['avoid_style'] or '（空）'}")
+        print(f"[restyle] avoid 里摘掉的旧画风词：{'、'.join(dropped) or '无'}")
         print(
             "[restyle] 角色 / 背景 / CG 不动："
             f"{len(cast.get('characters') or [])} 人，"

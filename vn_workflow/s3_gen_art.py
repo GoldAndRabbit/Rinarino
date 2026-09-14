@@ -60,7 +60,12 @@ _EMPTY_STAGE = (
 
 
 def _compose(art: dict[str, Any], subject: str, *, kind: Kind, extra: str = "") -> str:
-    """统一的 prompt 骨架：风格 → 主体 → 光线 / 构图 → 负面。"""
+    """统一的 prompt 骨架：风格 → 主体 → 光线 / 构图 → 负面。
+
+    骨架里**不准出现画风词**，只管画幅、构图、去背这些和取向无关的硬要求。
+    画风只从 art.style 来——之前骨架里写着「写实场景」「没有线稿和描边」，
+    一换取向，骨架和 style 就在同一句 prompt 里互相拆台。
+    """
     parts = [
         art.get("style", ""),
         subject.strip(),
@@ -73,7 +78,7 @@ def _compose(art: dict[str, Any], subject: str, *, kind: Kind, extra: str = "") 
     ]
     if kind == "sprite":
         parts.append(
-            # 写实人像的构图惯例是裁到半身，所以「全身」要连**不要什么**一起说死，
+            # 人像的构图惯例是裁到半身，所以「全身」要连**不要什么**一起说死，
             # 只写「全身立绘」会得到一张齐腰截断的胸像。
             "全身立绘，9:16 竖构图，居中，从头顶到鞋子完整入画，两只鞋都完整可见，"
             "不是半身像、不是胸像、不是特写，不在腰部或膝盖裁切，"
@@ -90,7 +95,7 @@ def _compose(art: dict[str, Any], subject: str, *, kind: Kind, extra: str = "") 
             # 绿幕会把绿光反到浅色衣服上，说清楚免得整件衣服被染绿——
             # 去溢色只能救边缘，救不了大面积染色
             "人物身上和衣服上不带任何绿色调，不要绿色反光，"
-            "高精度细节：五官清晰锐利，发丝一根根分明，皮肤有质感不磨皮，衣料织纹与褶皱清楚，没有线稿和描边，"
+            "高精度细节：五官清晰锐利，发丝一根根分明，衣料织纹与褶皱清楚，"
             # 景深糊的是手和脚——立绘要整张合焦，虚化只给场景
             "人物从头到脚全部合焦，不要景深虚化"
         )
@@ -99,14 +104,19 @@ def _compose(art: dict[str, Any], subject: str, *, kind: Kind, extra: str = "") 
     elif kind == "bg":
         # 背景是拿来垫立绘的舞台：画里但凡有个人，立绘一站上去就变成「背后藏了个人」；
         # 浅景深则正好把前面那张合焦的立绘从背景里推出来
-        parts.append(
-            "4:5 竖构图，写实场景，浅景深，主体居中且完整入画，画面中不出现文字，" + _EMPTY_STAGE
-        )
+        parts.append("4:5 竖构图，浅景深，主体居中且完整入画，画面中不出现文字，" + _EMPTY_STAGE)
     else:
         # 播放框是 4:5，出图就按 4:5——主体居中、留出上下余量，才不会被裁到
-        parts.append("4:5 竖构图，写实场景，浅景深，主体居中且完整入画，画面中不出现文字")
-    if avoid := art.get("avoid"):
-        parts.append(f"避免：{avoid}")
+        parts.append("4:5 竖构图，浅景深，主体居中且完整入画，画面中不出现文字")
+    # 负面词两段：画风层的（avoid_style，换取向时整段换）+ 这部作品自己的忌讳（avoid）。
+    # 两段各写各的，难免撞词（「塑料感」两边都有），拼的时候去个重。
+    avoid: list[str] = []
+    for chunk in (art.get("avoid_style"), art.get("avoid")):
+        for word in str(chunk or "").split("、"):
+            if (word := word.strip()) and word not in avoid:
+                avoid.append(word)
+    if avoid:
+        parts.append(f"避免：{'、'.join(avoid)}")
     return "，".join(p.strip().strip("，") for p in parts if p and p.strip())
 
 
@@ -423,7 +433,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.recut:
         recut_all(story)
         return 0
-    asyncio.run(
+    result = asyncio.run(
         run(
             story,
             only=set(args.only) or None,
@@ -433,7 +443,8 @@ def main(argv: list[str] | None = None) -> int:
             model=args.model,
         )
     )
-    return 0
+    # 有没画成的就给非零退出码：旧文件还在，不喊的话看起来和成功一模一样
+    return 1 if result.get("blocked") else 0
 
 
 if __name__ == "__main__":

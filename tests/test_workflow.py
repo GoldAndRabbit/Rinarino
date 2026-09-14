@@ -148,11 +148,22 @@ def test_expression_pose_reaches_the_prompt():
 def test_sprite_prompt_pins_down_the_background():
     """模型很爱自作主张加一片带色地面，加了 flood fill 就抠不掉。
 
-    写实取向下还多一条：人像的构图惯例是裁到半身，「全身」得连不要什么一起说死。
+    还有一条：人像的构图惯例是裁到半身，「全身」得连不要什么一起说死。
     """
     job = next(j for j in s3_gen_art.build_plan(STORY) if j.kind == "sprite")
     for must in ("绿幕", "没有地面", "没有接触阴影", "不是半身像"):
         assert must in job.prompt
+
+
+def test_skeleton_carries_no_style_words():
+    """画风只从 art_direction.style 来。骨架里一旦写着取向词，换取向时两边就在
+    同一句 prompt 里互相拆台——之前「写实场景」「没有线稿和描边」就是这么打起来的。"""
+    cast = STORY.read_json("cast.json")
+    blank = {**cast.get("art_direction", {}), "style": "", "avoid_style": "", "avoid": ""}
+    for kind in ("sprite", "bg", "cg", "est"):
+        prompt = s3_gen_art._compose(blank, "主体", kind=kind)
+        for word in ("写实", "照片", "插画", "厚涂", "线稿", "描边", "二次元", "磨皮"):
+            assert word not in prompt, f"{kind} 骨架里有画风词「{word}」"
 
 
 def test_scene_art_matches_the_player_frame():

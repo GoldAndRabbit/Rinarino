@@ -1,20 +1,33 @@
 // 宿主：拉小说列表 → 选一部 → 装引擎 → 三栏各自渲染。
 // 播放过程零请求：整部小说（剧本 + 素材索引 + 设定表）一次取完。
+//
+// 右栏是调试面板，两排导航：「剧情」看全局（主线剧情图 / 场景素材 / 事件 CG），
+// 「角色」看个人。主线剧情图点结点进「这一幕」，面板里所有图片悬停放大。
 
 import * as cast from './cast.js';
 import { Engine } from '../engine/engine.js';
+import * as gallery from './gallery.js';
 import * as graph from './graph.js';
 import { Player } from '../engine/player.js';
+import * as scene from './scene.js';
+import * as zoom from './zoom.js';
 
 const $ = (sel) => document.querySelector(sel);
 const esc = (s) =>
   String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 
+const STORY_TABS = [
+  { key: 'graph', label: '主线剧情图' },
+  { key: 'scenes', label: '场景素材' },
+  { key: 'cgs', label: '事件 CG' },
+];
+
 const state = {
   list: [],
   payload: null,
   engine: null,
-  tab: 'main',
+  tab: 'graph', // graph | scenes | cgs | char:<key>
+  focus: null, // 主线剧情图里正在看的那一幕
   music: false,
 };
 
@@ -23,6 +36,21 @@ audio.loop = true;
 audio.volume = 0.35;
 
 const player = new Player(document, $('#screen'));
+const zoomer = zoom.install($('#tabbody'));
+
+// 当前视图写进地址栏：刷新不丢，调试时也能直接把某一幕的链接发给别人
+//   #story=americano&tab=char:zhi   #story=americano&tab=graph&node=opening
+function readHash() {
+  const params = new URLSearchParams(location.hash.slice(1));
+  return { story: params.get('story'), tab: params.get('tab'), node: params.get('node') };
+}
+
+function writeHash() {
+  if (!state.payload) return;
+  const params = new URLSearchParams({ story: state.payload.name, tab: state.tab });
+  if (state.focus) params.set('node', state.focus);
+  history.replaceState(null, '', `#${params}`);
+}
 
 async function json(url) {
   const res = await fetch(url);
@@ -52,24 +80,23 @@ function renderRail() {
 
 function renderTabs() {
   const characters = state.payload?.cast?.characters || [];
-  $('#tabs').innerHTML = [
-    { key: 'main', label: '主线剧情' },
-    ...characters.map((c) => ({ key: c.key, label: c.name })),
-  ]
-    .map(
-      (t) =>
-        `<button class="tab${t.key === state.tab ? ' is-active' : ''}" data-tab="${esc(
-          t.key
-        )}">${esc(t.label)}</button>`
-    )
-    .join('');
+  const tab = (key, label) =>
+    `<button class="tab${key === state.tab ? ' is-active' : ''}" data-tab="${esc(key)}">${esc(label)}</button>`;
+  $('#tabs').innerHTML = `
+    <div class="tabrow"><span class="tabrow-h">剧情</span>${STORY_TABS.map((t) => tab(t.key, t.label)).join('')}</div>
+    <div class="tabrow"><span class="tabrow-h">角色</span>${
+      characters.map((c) => tab(`char:${c.key}`, c.name)).join('') ||
+      '<span class="tabrow-empty">这部没有角色设定</span>'
+    }</div>`;
 }
 
 function takenEdges(engine) {
-  const set = new Set(engine.taken.map(([node, index]) => {
-    const target = engine.byId.get(node)?.choices?.[index]?.target;
-    return `${node}→${target}#${index}`;
-  }));
+  const set = new Set(
+    engine.taken.map(([node, index]) => {
+      const target = engine.byId.get(node)?.choices?.[index]?.target;
+      return `${node}→${target}#${index}`;
+    })
+  );
   // 无选项的直接跳转 / 条件跳转：按走过的结点序列补上
   for (let i = 0; i < engine.visited.length - 1; i += 1) {
     set.add(`${engine.visited[i]}→${engine.visited[i + 1]}#d`);
@@ -77,56 +104,74 @@ function takenEdges(engine) {
   return set;
 }
 
-/** 分支图下面挂一排场景：这部小说画过的背景和定场图，鼠标移上去原地放大看细节。 */
-function renderScenes(payload) {
-  const assets = payload.assets || {};
-  const desc = { ...(payload.cast?.backgrounds || {}), ...(payload.cast?.est || {}) };
-  const ids = Object.keys(assets)
-    .filter((k) => k.startsWith('bg_') || k.startsWith('est_'))
-    .sort();
-  if (!ids.length) return '';
-  return `<section class="scenes">
-    <h3 class="scenes-head">场景 <span>${ids.length} 张</span></h3>
-    <div class="scene-grid">${ids
-      .map(
-        (id) => `<figure class="scene" tabindex="0">
-          <span class="scene-shot"><img src="${esc(assets[id])}" alt="${esc(id)}" loading="lazy"></span>
-          <figcaption>
-            <b>${esc(id.replace(/^(bg|est)_/, ''))}</b>
-            <span>${esc(desc[id] || '')}</span>
-          </figcaption>
-        </figure>`
-      )
-      .join('')}</div>
-  </section>`;
+function renderGraph() {
+  const engine = state.engine;
+  const story = state.payload.story;
+  return `<div class="graph-head">
+      <b>${story.nodes.length}</b> 个结点
+      <span>·</span> <b>${(story.endings || []).length}</b> 个结局
+      <span>·</span> 走过 <b>${new Set(engine.visited).size}</b> 个
+      <span class="graph-hint">点结点看这一幕</span>
+    </div>
+    <div class="graph-scroll"><div class="graph">${graph.render(story, {
+      visited: new Set(engine.visited),
+      current: engine.frame?.node,
+      taken: takenEdges(engine),
+    })}</div></div>`;
 }
 
 function renderPanel() {
+  zoomer.hide();
   const body = $('#tabbody');
-  if (!state.payload) {
+  const payload = state.payload;
+  if (!payload) {
     body.innerHTML = '<p class="empty">载入中…</p>';
     return;
   }
-  if (state.tab === 'main') {
-    const engine = state.engine;
-    const story = state.payload.story;
-    body.innerHTML = `<div class="graph-head">
-        <b>${story.nodes.length}</b> 个结点
-        <span>·</span> <b>${(story.endings || []).length}</b> 个结局
-        <span>·</span> 走过 <b>${new Set(engine.visited).size}</b> 个
-      </div>
-      <div class="graph-scroll"><div class="graph">${graph.render(story, {
-        visited: new Set(engine.visited),
-        current: engine.frame?.node,
-        taken: takenEdges(engine),
-      })}</div></div>
-      ${renderScenes(state.payload)}`;
-    return;
+  if (state.tab === 'graph') {
+    body.innerHTML = state.focus
+      ? scene.render(payload.story, state.focus, {
+          assets: payload.assets,
+          cast: payload.cast,
+          meta: payload.meta,
+          order: graph.layout(payload.story).order,
+          playing: state.engine.frame?.node,
+        })
+      : renderGraph();
+  } else if (state.tab === 'scenes') {
+    body.innerHTML = gallery.renderScenes(payload);
+  } else if (state.tab === 'cgs') {
+    body.innerHTML = gallery.renderCgs(payload);
+  } else {
+    const key = state.tab.replace(/^char:/, '');
+    const character = (payload.cast?.characters || []).find((c) => c.key === key);
+    body.innerHTML = character
+      ? cast.render(character, { assets: payload.assets, prompts: payload.prompts, cast: payload.cast })
+      : '<p class="empty">没有这个角色。</p>';
   }
-  const character = (state.payload.cast?.characters || []).find((c) => c.key === state.tab);
-  body.innerHTML = character
-    ? cast.render(character, { assets: state.payload.assets, prompts: state.payload.prompts })
-    : '<p class="empty">没有这个角色。</p>';
+  writeHash();
+}
+
+function focusScene(id) {
+  if (!state.payload?.story?.nodes?.some((n) => n.id === id)) return;
+  state.focus = id;
+  renderPanel();
+  $('#tabbody').scrollTop = 0;
+}
+
+function leaveScene() {
+  state.focus = null;
+  renderPanel();
+}
+
+/** 调试用：不管变量对不对得上，直接把播放器切到这一幕。能「上一步」退回来。 */
+function jumpTo(id) {
+  const engine = state.engine;
+  engine.pushHistory();
+  engine.finished = false;
+  engine.ending = null;
+  engine.enterNode(id);
+  draw();
 }
 
 // --- 中栏 -------------------------------------------------------------------
@@ -149,14 +194,17 @@ function syncMusic() {
 
 function draw() {
   player.draw(state.engine);
-  renderPanel();
+  // 只有剧情图跟着播放进度变；素材页和角色页每步都重画的话，展开的 prompt 会被收起来
+  if (state.tab === 'graph') renderPanel();
   syncMusic();
 }
 
-async function open(name) {
+async function open(name, view = {}) {
   state.payload = await json(`/api/story/${encodeURIComponent(name)}.json`);
   state.engine = new Engine(state.payload.story);
-  state.tab = 'main';
+  const known = new Set(['graph', 'scenes', 'cgs', ...(state.payload.cast?.characters || []).map((c) => `char:${c.key}`)]);
+  state.tab = known.has(view.tab) ? view.tab : 'graph';
+  state.focus = state.tab === 'graph' && state.payload.story.nodes.some((n) => n.id === view.node) ? view.node : null;
   player.bind(state.payload);
   const meta = state.payload.meta || {};
   $('#stage-kicker').textContent = meta.subtitle || '';
@@ -168,7 +216,9 @@ async function open(name) {
   $('#btn-restart').textContent = ui.restart || '重开';
   renderRail();
   renderTabs();
-  draw();
+  player.draw(state.engine);
+  renderPanel();
+  syncMusic();
 }
 
 // --- 事件 -------------------------------------------------------------------
@@ -182,8 +232,21 @@ $('#tabs').addEventListener('click', (ev) => {
   const btn = ev.target.closest('[data-tab]');
   if (!btn) return;
   state.tab = btn.dataset.tab;
+  if (state.tab !== 'graph') state.focus = null;
   renderTabs();
   renderPanel();
+  $('#tabbody').scrollTop = 0;
+});
+
+$('#tabbody').addEventListener('click', (ev) => {
+  const node = ev.target.closest('[data-node]');
+  if (node) return focusScene(node.dataset.node);
+  const go = ev.target.closest('[data-scene-go]');
+  if (go) return focusScene(go.dataset.sceneGo);
+  if (ev.target.closest('[data-scene-back]')) return leaveScene();
+  const jump = ev.target.closest('[data-scene-jump]');
+  if (jump) return jumpTo(jump.dataset.sceneJump);
+  return undefined;
 });
 
 player.onChoose = (index) => {
@@ -217,7 +280,10 @@ $('#screen').addEventListener('click', (ev) => {
 
 document.addEventListener('keydown', (ev) => {
   if (ev.target.matches('input, textarea')) return;
-  if (ev.key === 'ArrowRight' || ev.key === ' ' || ev.key === 'Enter') {
+  if (ev.key === 'Escape' && state.focus) {
+    leaveScene();
+  } else if (ev.key === 'ArrowRight' || ev.key === ' ' || ev.key === 'Enter') {
+    if (ev.target.closest('button, summary')) return; // 按钮自己的回车/空格别被抢走
     if (state.engine?.canNext) {
       ev.preventDefault();
       state.engine.next();
@@ -241,7 +307,9 @@ document.addEventListener('keydown', (ev) => {
   try {
     state.list = await json('/api/stories.json');
     renderRail();
-    if (state.list.length) await open(state.list[0].name);
+    const view = readHash();
+    const first = state.list.find((s) => s.name === view.story) || state.list[0];
+    if (first) await open(first.name, view);
     else $('#stage-title').textContent = '还没有小说';
   } catch (err) {
     $('#stage-title').textContent = '后端没连上';

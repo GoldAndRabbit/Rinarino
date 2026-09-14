@@ -197,7 +197,7 @@ def main(argv: list[str] | None = None) -> int:
     if not story.exists() and not args.brief:
         ap.error(f"{args.name} 是新的，需要 --brief 给一句设定")
 
-    asyncio.run(
+    result = asyncio.run(
         run(
             args.name,
             brief=args.brief,
@@ -209,6 +209,14 @@ def main(argv: list[str] | None = None) -> int:
             inline=args.inline,
         )
     )
+    # 生图失败时旧文件原样留着，后面的闸门和打包全都照过——不在这儿喊出来、不给非零退出码，
+    # 上面那句「完成」就会盖住「有 16 张没画成」，调用方（和人）都以为这批成了
+    if blocked := (result.get("art") or {}).get("blocked"):
+        print(
+            f"\n[pipeline] ✗ {len(blocked)} 张没画成，磁盘上还是旧图：{'、'.join(blocked)}",
+            file=sys.stderr,
+        )
+        return 1
     return 0
 
 
