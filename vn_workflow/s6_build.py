@@ -26,6 +26,8 @@ ENGINE_DIR = FRONTEND / "engine"
 ENGINE = ENGINE_DIR / "engine.js"
 PLAYER = ENGINE_DIR / "player.js"
 PLAY_CSS = ENGINE_DIR / "play.css"
+# 探索解谜玩法的引擎和播放器。story.json 里写着 engine: explore 的才用这一套
+EXPLORE_DIR = FRONTEND / "explore"
 
 PAGE = """<!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8">
@@ -94,6 +96,25 @@ document.addEventListener('keydown', (e) => {
 draw();
 """
 
+
+# 探索玩法的屏幕自己管点击（台词、行动、背包各有各的意思），这里只接按钮和键盘
+EXPLORE_RUNTIME = """
+const $ = (s) => document.querySelector(s);
+const engine = new ExploreEngine(DATA.story);
+const player = new ExplorePlayer(document, $('#screen'));
+player.bind(DATA);
+const draw = () => player.draw(engine);
+player.onChange = draw;
+$('#btn-next').onclick = () => { engine.next(); draw(); };
+$('#btn-prev').onclick = () => { engine.prev(); draw(); };
+$('#btn-restart').onclick = () => { engine.reset(); draw(); };
+document.addEventListener('keydown', (e) => {
+  if (e.target.matches('input')) return;
+  if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); engine.next(); draw(); }
+  if (e.key === 'ArrowLeft') { engine.prev(); draw(); }
+});
+draw();
+"""
 
 # 母版是 2560x1440 的 PNG（一张三四 MB），那是存档用的尺寸，不是上网用的。
 # 打包时统一转成 WebP 并压到够用的边长——sprite 保留 alpha。
@@ -168,20 +189,27 @@ def build(story: Story, *, inline: bool = False, verbose: bool = True) -> Path:
         "cast": story.read_json("cast.json"),
         "assets": assets,
     }
+
     # frontend/engine/ 是同一份源码，打包只是把它内联进来，不另写一套播放端。
     # 内联进 <script type="module"> 后 export 没有意义，顶层的一律剥掉。
     def inline_js(path: Path) -> str:
         return re.sub(r"^export ", "", path.read_text(encoding="utf-8"), flags=re.M)
 
+    # 两种玩法各带各的引擎和播放器，只内联用得到的那一套。
+    # 探索玩法的样式叠在剧情那份后面：token（颜色、字体）沿用同一份
+    explore = compiled.get("engine") == "explore"
+    play_css = PLAY_CSS.read_text(encoding="utf-8")
+    if explore:
+        play_css += "\n" + (EXPLORE_DIR / "play.css").read_text(encoding="utf-8")
     html = PAGE.format(
         title=meta.get("title") or story.name,
         subtitle=meta.get("subtitle", ""),
-        play_css=PLAY_CSS.read_text(encoding="utf-8"),
+        play_css=play_css,
         shell_css=SHELL_CSS,
-        engine=inline_js(ENGINE),
-        player=inline_js(PLAYER),
+        engine=inline_js(EXPLORE_DIR / "engine.js" if explore else ENGINE),
+        player=inline_js(EXPLORE_DIR / "player.js" if explore else PLAYER),
         data=json.dumps(payload, ensure_ascii=False),
-        runtime=RUNTIME,
+        runtime=EXPLORE_RUNTIME if explore else RUNTIME,
     )
     out = DIST / f"{story.name}.html"
     out.write_text(html, encoding="utf-8")

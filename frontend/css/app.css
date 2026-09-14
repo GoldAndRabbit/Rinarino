@@ -1,6 +1,7 @@
 /* Rinarino —— 三栏：小说列表 / 播放器 / 分支图与角色页 */
 
 @import url("/engine/play.css");
+@import url("/explore/play.css");
 
 :root {
   --bg: #f4f4f1;
@@ -457,6 +458,69 @@ button { font: inherit; color: inherit; cursor: pointer; }
 }
 .gl-used { margin-top: 4px; font-size: 11px; color: var(--muted); }
 .is-orphan { color: var(--warm); }
+
+/* ---- 探索解谜：状态图 / State / 可解性 / 单个结点 ---- */
+
+.xm-edge { fill: none; stroke: #c8c7c1; stroke-width: 1.6px; }
+.xm-edge.is-walked { stroke: #9fbbe8; stroke-width: 2px; }
+.xm-edge.is-gated { stroke: #d7a47a; stroke-dasharray: 5 4; }
+.xm-edge.is-gated.is-open { stroke: var(--accent); }
+#xm-arrow path { fill: #b4b3ad; }
+.xm-gate rect { fill: var(--surface); stroke: #ecd9c6; }
+.xm-gate text { font-size: 11px; fill: var(--warm); }
+.xm-gate.is-open rect { stroke: #cddcf4; }
+.xm-gate.is-open text { fill: var(--accent); }
+.xm-end { fill: var(--surface); stroke: #b4b3ad; stroke-width: 1.8px; }
+.xm-end.is-visited { fill: var(--warm); stroke: var(--warm); }
+.xm-end.is-current { stroke: var(--accent); stroke-width: 3px; }
+
+.xm-problems { margin-top: 14px; padding: 10px 14px; font-size: 12.5px; color: #a33a2a; background: #fdf3f1; border: 1px solid #f0c8c0; border-radius: 10px; }
+.xm-problems ul { margin: 6px 0 0; padding-left: 18px; }
+
+.xm-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; margin-top: 18px; }
+.xm-card { min-width: 0; padding: 12px 16px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 12px; }
+.xm-sub { margin: 10px 0 4px; font-size: 11.5px; color: var(--muted); }
+.xm-flag { display: grid; grid-template-columns: 16px minmax(0, 1fr) auto; align-items: baseline; gap: 6px; padding: 2px 0; font-size: 12.5px; color: var(--ink-2); }
+.xm-flag i { font-style: normal; color: #c8c7c1; }
+.xm-flag.is-on i { color: var(--accent); }
+.xm-flag.is-on span { font-weight: 600; color: var(--ink); }
+.xm-flag code { font-family: var(--mono); font-size: 10.5px; color: var(--muted); }
+.xm-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.xm-chip { padding: 1px 9px; font-size: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 999px; }
+.xm-path { margin: 0; font-size: 12px; line-height: 1.7; color: var(--ink-2); }
+.xm-mono { font-family: var(--mono); font-size: 11px; }
+.xm-muted { color: var(--muted); }
+.xm-note { margin: 0 0 8px; font-size: 12px; color: var(--muted); }
+.xm-solve { padding: 6px 0; font-size: 12.5px; border-top: 1px dashed var(--line); }
+.xm-solve summary { cursor: pointer; color: var(--ink-2); }
+.xm-solve b { margin-right: 8px; color: var(--ink); }
+.xm-solve ol { margin: 6px 0 0; padding-left: 22px; font-size: 12px; line-height: 1.75; color: var(--ink-2); }
+.is-bad, .xm-solve.is-bad { color: #b3402f; }
+
+.xm-text { margin: 0; font-size: 13px; line-height: 1.75; color: var(--ink-2); }
+.xm-rule { padding: 4px 0; }
+.xm-rule p { margin: 2px 0 0; font-size: 13px; color: var(--ink-2); }
+.xm-cond { padding: 0 8px; font-size: 11.5px; color: var(--ink-2); border: 1px solid var(--line); border-radius: 999px; }
+.xm-cond.is-true { color: #2e7d4f; background: #eff8f2; border-color: #bfe0cc; }
+.xm-cond.is-false { color: #a33a2a; background: #fdf3f1; border-color: #f0c8c0; }
+
+.xm-choice { max-width: 760px; padding: 10px 12px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; }
+.xm-choice + .xm-choice { margin-top: 8px; }
+.xm-choice.is-blocked { background: var(--surface); border-style: dashed; }
+.xm-choice-h { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; }
+.xm-choice-h b { font-size: 13.5px; }
+.xm-choice-h code { font-family: var(--mono); font-size: 10.5px; color: var(--muted); }
+.xm-kind { padding: 0 7px; font-size: 11px; color: #fff; background: #8d9095; border-radius: 999px; }
+.xm-kind.is-go { background: #6f8fb8; }
+.xm-kind.is-act { background: #b08a4e; }
+.xm-kind.is-use { background: #c46f4a; }
+.xm-kind.is-code { background: #7a6bb0; }
+.xm-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; margin-top: 5px; font-size: 12.5px; color: var(--ink-2); }
+.xm-line > b { flex: none; min-width: 46px; font-size: 11.5px; font-weight: 600; color: var(--muted); }
+.xm-line code { font-family: var(--mono); color: var(--accent); }
+.xm-fx { padding: 0 7px; font-size: 11.5px; color: var(--warm); background: #fbf1e7; border-radius: 999px; }
+.xm-ev { font-size: 11.5px; color: var(--ink-2); }
+.xm-ev + .xm-ev::before { content: "· "; color: var(--muted); }
 
 .empty { color: var(--muted); font-size: 13px; padding: 20px 0; }
 

@@ -6,20 +6,26 @@ const esc = (s) =>
 
 const IMAGE = /\.(png|webp|jpe?g|svg)(\?|$)/i;
 
-/** 素材 id → 用到它的结点名。结点进场、行内、选项台词里的 tags 都算。 */
+/** 素材 id → 用到它的结点名。两种玩法写素材的地方不一样，都要算上。 */
 export function usage(story) {
   const out = new Map();
   for (const node of story.nodes || []) {
+    const name = node.label || node.id;
+    const add = (id) => {
+      if (!id) return;
+      const names = out.get(id) || [];
+      if (!names.includes(name)) names.push(name);
+      out.set(id, names);
+    };
+    // 剧情玩法：结点、台词、选项台词的 tags
     const lines = [...(node.lines || []), ...(node.choices || []).flatMap((c) => c.lines || [])];
     for (const tags of [node.tags, ...lines.map((l) => l.tags)]) {
-      for (const key of ['bg', 'cg', 'video']) {
-        const id = tags?.[key];
-        if (!id) continue;
-        const names = out.get(id) || [];
-        const name = node.label || node.id;
-        if (!names.includes(name)) names.push(name);
-        out.set(id, names);
-      }
+      for (const key of ['bg', 'cg', 'video']) add(tags?.[key]);
+    }
+    // 探索玩法：背景写在结点上（可以随状态变），换背景 / CG 写在 Event 里
+    for (const bg of Array.isArray(node.bg) ? node.bg.map((b) => b.id) : [node.bg]) add(bg);
+    for (const block of [node.enter, node.first, ...(node.choices || [])]) {
+      for (const ev of block?.events || []) if (ev.type === 'bg' || ev.type === 'cg') add(ev.id);
     }
   }
   return out;

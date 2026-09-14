@@ -1,0 +1,468 @@
+{
+  "engine": "explore",
+  "version": 1,
+  "title": "十一点四十七分",
+  "start": "porch",
+  "state": {
+    "inventory": ["letter"],
+    "flags": {}
+  },
+  "flags": {
+    "clock_seen": { "label": "看过大钟停在几点" },
+    "diary_read": { "label": "读过日记最后一页" },
+    "study_open": { "label": "书房门开了" },
+    "dog_asleep": { "label": "猎犬睡着了" },
+    "basement_open": { "label": "地下室门开了" },
+    "basement_lit": { "label": "地下室点亮了" },
+    "knows_blueprint": { "label": "看过人偶设计图" },
+    "knows_photo": { "label": "看清了旧照片" },
+    "knows_letters": { "label": "发现信是自己写的" },
+    "knows_body": { "label": "找到了顾博士" }
+  },
+  "items": {
+    "letter": {
+      "name": "邀请函",
+      "desc": "顾博士的邀请函：「宅中诸钟俱停，盼君来修。门不锁。」字写得很工整，工整得不太像人手写的。",
+      "examine": {
+        "condition": { "key": "knows_letters", "operator": "eq", "value": true },
+        "events": [
+          { "type": "narrate", "text": "你把它和地下室那一摞草稿比了比——每个字的倾斜角度都一样。这封信是你自己写的。" }
+        ]
+      }
+    },
+    "matches": { "name": "火柴", "desc": "一盒受潮的火柴，还能划着几根。" },
+    "meat": { "name": "生肉", "desc": "一块生肉，看着还新鲜。可这宅子里一个人都没有。" },
+    "pills": { "name": "安眠药", "desc": "药瓶标签上写着：「给小黑，每次半片。」" },
+    "drugged_meat": { "name": "掺药的肉", "desc": "半片安眠药按进了肉里，看不出来。" },
+    "diary": {
+      "name": "日记",
+      "desc": "顾博士的日记，前面大半本记的都是齿轮和发条的尺寸。",
+      "examine": {
+        "effects": [{ "type": "set", "key": "diary_read", "value": true }],
+        "events": [
+          { "type": "narrate", "text": "翻到最后一页，只有一行字：「它每次醒来都会忘记。钟停在哪一刻，门就开在哪一刻。」" }
+        ]
+      }
+    },
+    "brass_key": { "name": "铜钥匙", "desc": "一把旧铜钥匙，齿很细。" },
+    "photo": {
+      "name": "旧照片",
+      "desc": "一张发黄的合影。",
+      "examine": {
+        "effects": [{ "type": "set", "key": "knows_photo", "value": true }],
+        "events": [
+          { "type": "narrate", "text": "照片上是年轻的顾博士，身边站着一个和你长得一模一样的人。背面写着：「S-7，第一次睁眼。」" }
+        ]
+      }
+    },
+    "teal_key": { "name": "齿轮钥匙", "desc": "青铜铸的钥匙，头部是一枚小齿轮。" },
+    "winding_key": { "name": "发条钥匙", "desc": "大钟用的发条钥匙，柄上刻着 S-7。" }
+  },
+  "recipes": [
+    {
+      "items": ["meat", "pills"],
+      "result": "drugged_meat",
+      "events": [{ "type": "narrate", "text": "你把半片安眠药按进了肉里。" }]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "porch",
+      "kind": "room",
+      "label": "门廊",
+      "bg": "bg_porch",
+      "text": "雨下得很密。顾宅的门虚掩着，门缝里透出一点昏黄的光。",
+      "first": {
+        "events": [{ "type": "narrate", "text": "你摸了摸口袋里的邀请函。约的就是今天。" }]
+      },
+      "choices": [
+        { "text": "推门进去", "next": "hall" },
+        {
+          "id": "leave",
+          "text": "转身走进雨里",
+          "condition": { "key": "knows_letters", "operator": "eq", "value": true },
+          "hidden": true,
+          "next": "end_leave"
+        }
+      ]
+    },
+    {
+      "id": "hall",
+      "kind": "room",
+      "label": "前厅",
+      "bg": "bg_hall",
+      "text": [
+        {
+          "condition": { "key": "clock_seen", "operator": "eq", "value": true },
+          "text": "前厅。大钟还停在十一点四十七分。"
+        },
+        { "text": "前厅很暗。正对门口立着一座落地大钟。左边是书房，右边是厨房，楼梯通往二楼，楼梯底下有一扇矮门。" }
+      ],
+      "choices": [
+        {
+          "id": "look_clock",
+          "kind": "act",
+          "text": "看看大钟",
+          "effects": [{ "type": "set", "key": "clock_seen", "value": true }],
+          "events": [
+            { "type": "narrate", "text": "钟摆一动不动，指针停在十一点四十七分。钟面下方有一个发条孔，里面是空的。" }
+          ]
+        },
+        {
+          "id": "wind_true",
+          "kind": "use",
+          "use": "winding_key",
+          "consume": true,
+          "text": "往发条孔里插点什么",
+          "condition": {
+            "all": [
+              { "key": "clock_seen", "operator": "eq", "value": true },
+              { "key": "knows_letters", "operator": "eq", "value": true },
+              { "key": "knows_photo", "operator": "eq", "value": true }
+            ]
+          },
+          "hidden": true,
+          "next": "end_true"
+        },
+        {
+          "id": "wind_plain",
+          "kind": "use",
+          "use": "winding_key",
+          "consume": true,
+          "text": "往发条孔里插点什么",
+          "condition": {
+            "all": [
+              { "key": "clock_seen", "operator": "eq", "value": true },
+              {
+                "not": {
+                  "all": [
+                    { "key": "knows_letters", "operator": "eq", "value": true },
+                    { "key": "knows_photo", "operator": "eq", "value": true }
+                  ]
+                }
+              }
+            ]
+          },
+          "hidden": true,
+          "next": "end_plain"
+        },
+        { "text": "去书房", "next": "study_door" },
+        { "text": "去厨房", "next": "kitchen" },
+        { "text": "上二楼", "next": "upstairs" },
+        { "text": "楼梯下的矮门", "next": "basement_door" },
+        { "text": "出门", "next": "porch" }
+      ]
+    },
+    {
+      "id": "study_door",
+      "kind": "view",
+      "label": "书房门",
+      "bg": "bg_study_door",
+      "text": "书房门上嵌着一块黄铜拨号盘，四个数字轮。门缝底下有风。",
+      "choices": [
+        {
+          "id": "study_code",
+          "kind": "code",
+          "code": "1147",
+          "prompt": "四位数字",
+          "once": true,
+          "text": "拨动数字轮",
+          "effects": [{ "type": "set", "key": "study_open", "value": true }],
+          "events": [
+            { "type": "sfx", "id": "sfx_unlock" },
+            { "type": "narrate", "text": "咔哒一声，门开了。" }
+          ],
+          "fail": {
+            "events": [{ "type": "narrate", "text": "数字轮咔咔地转回了原位。" }]
+          },
+          "next": "study"
+        },
+        {
+          "text": "进书房",
+          "condition": { "key": "study_open", "operator": "eq", "value": true },
+          "hidden": true,
+          "next": "study"
+        },
+        { "text": "回前厅", "next": "hall" }
+      ]
+    },
+    {
+      "id": "study",
+      "kind": "room",
+      "label": "书房",
+      "bg": "bg_study",
+      "text": "书房里堆满了钟表零件。书桌上压着一卷图纸，桌子右侧有一个带锁的抽屉。",
+      "choices": [
+        {
+          "id": "look_blueprint",
+          "kind": "act",
+          "text": "展开图纸",
+          "effects": [{ "type": "set", "key": "knows_blueprint", "value": true }],
+          "events": [
+            { "type": "narrate", "text": "是一张人偶的设计图，编号 S-7。关节、发条、面部模具……图纸角落贴着一张便签：「给它一个职业，它才会愿意出门。」" }
+          ]
+        },
+        {
+          "id": "open_drawer",
+          "kind": "use",
+          "use": "brass_key",
+          "once": true,
+          "text": "带锁的抽屉",
+          "effects": [{ "type": "add_item", "item": "teal_key" }],
+          "events": [{ "type": "narrate", "text": "抽屉里只有一把钥匙，头部是一枚小齿轮。" }]
+        },
+        { "text": "回前厅", "next": "hall" }
+      ]
+    },
+    {
+      "id": "kitchen",
+      "kind": "room",
+      "label": "厨房",
+      "bg": "bg_kitchen",
+      "text": "灶台是冷的。窗外是后花园，一条黑色的猎犬趴在温室门口，一动不动地盯着这边。",
+      "choices": [
+        {
+          "id": "take_matches",
+          "kind": "act",
+          "once": true,
+          "text": "翻橱柜",
+          "effects": [{ "type": "add_item", "item": "matches" }],
+          "events": [{ "type": "narrate", "text": "橱柜里有一盒受潮的火柴。" }]
+        },
+        {
+          "id": "take_meat",
+          "kind": "act",
+          "once": true,
+          "text": "打开冷藏柜",
+          "effects": [{ "type": "add_item", "item": "meat" }],
+          "events": [{ "type": "narrate", "text": "冷藏柜里有一块生肉，像是刚买不久。" }]
+        },
+        { "text": "去后花园", "next": "garden" },
+        { "text": "回前厅", "next": "hall" }
+      ]
+    },
+    {
+      "id": "garden",
+      "kind": "room",
+      "label": "后花园",
+      "bg": "bg_garden",
+      "text": [
+        {
+          "condition": { "key": "dog_asleep", "operator": "eq", "value": true },
+          "text": "雨打在温室的玻璃顶上。猎犬蜷在门边睡着了。"
+        },
+        { "text": "雨打在温室的玻璃顶上。猎犬站在温室门口，死死盯着你。" }
+      ],
+      "choices": [
+        {
+          "id": "feed_dog",
+          "kind": "use",
+          "use": "drugged_meat",
+          "consume": true,
+          "text": "把东西扔给猎犬",
+          "condition": { "not": { "key": "dog_asleep", "operator": "eq", "value": true } },
+          "hidden": true,
+          "fail_text": "它闻了闻就扭过头去，继续盯着你。",
+          "effects": [{ "type": "set", "key": "dog_asleep", "value": true }],
+          "events": [{ "type": "narrate", "text": "它叼走了肉，没过多久就在门边睡着了。" }]
+        },
+        {
+          "text": "进温室",
+          "condition": { "key": "dog_asleep", "operator": "eq", "value": true },
+          "locked_text": "猎犬挡在温室门口，你一靠近它就低吼。",
+          "next": "greenhouse"
+        },
+        { "text": "回厨房", "next": "kitchen" }
+      ]
+    },
+    {
+      "id": "greenhouse",
+      "kind": "room",
+      "label": "温室",
+      "bg": "bg_greenhouse",
+      "text": "温室里的花全枯了，只有角落里一盆还开着，花盆底下压着什么东西。",
+      "choices": [
+        {
+          "id": "take_brass",
+          "kind": "act",
+          "once": true,
+          "text": "搬开那盆花",
+          "effects": [{ "type": "add_item", "item": "brass_key" }],
+          "events": [{ "type": "narrate", "text": "一把铜钥匙。花盆上贴着标签：「S-7 最喜欢的花」。" }]
+        },
+        { "text": "回后花园", "next": "garden" }
+      ]
+    },
+    {
+      "id": "upstairs",
+      "kind": "room",
+      "label": "二楼",
+      "bg": "bg_upstairs",
+      "text": "走廊尽头是顾博士的卧室。墙上挂着一排肖像，最后一个画框是空的。",
+      "choices": [
+        {
+          "id": "look_frames",
+          "kind": "act",
+          "text": "看看那排肖像",
+          "events": [{ "type": "narrate", "text": "每一幅都是顾博士，从年轻到老。空画框下的铭牌上刻着：S-7。" }]
+        },
+        { "text": "进卧室", "next": "bedroom" },
+        { "text": "下楼", "next": "hall" }
+      ]
+    },
+    {
+      "id": "bedroom",
+      "kind": "room",
+      "label": "卧室",
+      "bg": "bg_bedroom",
+      "text": "卧室收拾得很整齐。床头柜上放着一本日记，梳妆台上摆着药箱，墙角立着一个上了锁的衣柜。",
+      "choices": [
+        {
+          "id": "take_diary",
+          "kind": "act",
+          "once": true,
+          "text": "拿起日记",
+          "effects": [{ "type": "add_item", "item": "diary" }],
+          "events": [{ "type": "narrate", "text": "日记很厚。也许该拿出来仔细翻翻。" }]
+        },
+        {
+          "id": "take_pills",
+          "kind": "act",
+          "once": true,
+          "text": "打开药箱",
+          "effects": [{ "type": "add_item", "item": "pills" }],
+          "events": [{ "type": "narrate", "text": "药箱里有一瓶安眠药。" }]
+        },
+        {
+          "id": "open_wardrobe",
+          "kind": "use",
+          "use": "brass_key",
+          "once": true,
+          "text": "上锁的衣柜",
+          "effects": [{ "type": "add_item", "item": "photo" }],
+          "events": [
+            { "type": "narrate", "text": "衣柜里只挂着一件外套，和你身上这件一模一样。口袋里有一张旧照片。" }
+          ]
+        },
+        { "text": "回走廊", "next": "upstairs" }
+      ]
+    },
+    {
+      "id": "basement_door",
+      "kind": "view",
+      "label": "矮门",
+      "bg": "bg_basement_door",
+      "text": "楼梯下的矮门上挂着一把锁，锁孔是齿轮形状的。",
+      "choices": [
+        {
+          "id": "open_basement",
+          "kind": "use",
+          "use": "teal_key",
+          "consume": true,
+          "once": true,
+          "text": "齿轮形状的锁孔",
+          "effects": [{ "type": "set", "key": "basement_open", "value": true }],
+          "events": [
+            { "type": "sfx", "id": "sfx_unlock" },
+            { "type": "narrate", "text": "锁开了。一股机油味从下面涌上来。" }
+          ],
+          "next": "basement"
+        },
+        {
+          "text": "下地下室",
+          "condition": { "key": "basement_open", "operator": "eq", "value": true },
+          "hidden": true,
+          "next": "basement"
+        },
+        { "text": "回前厅", "next": "hall" }
+      ]
+    },
+    {
+      "id": "basement",
+      "kind": "room",
+      "label": "地下室",
+      "bg": [
+        { "condition": { "key": "basement_lit", "operator": "eq", "value": true }, "id": "bg_basement" },
+        { "id": "bg_basement_dark" }
+      ],
+      "text": [
+        {
+          "condition": { "key": "basement_lit", "operator": "eq", "value": true },
+          "text": "地下室。火光照着一整面墙的人脸模具。"
+        },
+        { "text": "地下室黑得看不见手。" }
+      ],
+      "choices": [
+        {
+          "id": "light",
+          "kind": "use",
+          "use": "matches",
+          "once": true,
+          "text": "在黑暗里摸索",
+          "hint": "太黑了，得先有点光。",
+          "effects": [{ "type": "set", "key": "basement_lit", "value": true }],
+          "events": [
+            { "type": "bg", "id": "bg_basement" },
+            { "type": "narrate", "text": "火光一跳。工作台上摆满了人脸模具——全是你的脸。" }
+          ]
+        },
+        {
+          "id": "look_bench",
+          "kind": "act",
+          "once": true,
+          "text": "看看工作台",
+          "condition": { "key": "basement_lit", "operator": "eq", "value": true },
+          "hidden": true,
+          "effects": [
+            { "type": "add_item", "item": "winding_key" },
+            { "type": "set", "key": "knows_letters", "value": true }
+          ],
+          "events": [
+            { "type": "narrate", "text": "台面上摊着一摞信纸，全是那封邀请函的草稿，一遍一遍地改。字迹和你口袋里那封一模一样。台钳上夹着一把发条钥匙。" }
+          ]
+        },
+        {
+          "id": "look_body",
+          "kind": "act",
+          "once": true,
+          "text": "角落里盖着白布的东西",
+          "condition": { "key": "basement_lit", "operator": "eq", "value": true },
+          "hidden": true,
+          "effects": [{ "type": "set", "key": "knows_body", "value": true }],
+          "events": [
+            { "type": "narrate", "text": "白布下面是顾博士，看得出已经很久了。他手里攥着一张纸条：「S-7，钟停的时候我也停了。去给它上弦，然后你就自由了。」" }
+          ]
+        },
+        { "text": "回楼上", "next": "hall" }
+      ]
+    },
+    {
+      "id": "end_true",
+      "kind": "ending",
+      "label": "上弦",
+      "bg": "bg_hall",
+      "ending": { "title": "上弦", "kind": "true" },
+      "text": "你把发条钥匙插进钟里，拧了四十七圈。钟摆动了，宅子里所有的钟同时走了起来——你胸口里也有什么东西跟着走了起来。你想起了自己的名字：S-7，一个修钟匠。",
+      "enter": { "events": [{ "type": "cg", "id": "cg_end_true" }] }
+    },
+    {
+      "id": "end_plain",
+      "kind": "ending",
+      "label": "修好了",
+      "bg": "bg_hall",
+      "ending": { "title": "修好了", "kind": "normal" },
+      "text": "你给大钟上好发条，钟摆重新动了起来。活儿干完了，你推门走进雨里。总觉得忘了什么，但怎么也想不起来。",
+      "enter": { "events": [{ "type": "cg", "id": "cg_end_plain" }] }
+    },
+    {
+      "id": "end_leave",
+      "kind": "ending",
+      "label": "雨里",
+      "bg": "bg_porch",
+      "ending": { "title": "雨里", "kind": "bad" },
+      "text": "你没有给钟上弦。你把那封自己写的邀请函撕了，走进雨里。走到第三个路口，脚步慢了下来——十一点四十七分。",
+      "enter": { "events": [{ "type": "cg", "id": "cg_end_leave" }] }
+    }
+  ],
+  "endings": ["end_true", "end_plain", "end_leave"]
+}

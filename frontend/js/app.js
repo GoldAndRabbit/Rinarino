@@ -6,6 +6,9 @@
 
 import * as cast from './cast.js';
 import { Engine } from '../engine/engine.js';
+import { ExploreEngine } from '../explore/engine.js';
+import * as explorePanel from './explore-panel.js';
+import { ExplorePlayer } from '../explore/player.js';
 import * as gallery from './gallery.js';
 import * as graph from './graph.js';
 import { Player } from '../engine/player.js';
@@ -28,6 +31,7 @@ const state = {
   engine: null,
   tab: 'graph', // graph | scenes | cgs | char:<key>
   focus: null, // 主线剧情图里正在看的那一幕
+  kind: 'vn', // vn | explore：两种玩法各用各的引擎和播放器，调试面板也各画各的
   music: false,
 };
 
@@ -35,7 +39,7 @@ const audio = new Audio();
 audio.loop = true;
 audio.volume = 0.35;
 
-const player = new Player(document, $('#screen'));
+let player = null;
 const zoomer = zoom.install($('#tabbody'));
 
 // 当前视图写进地址栏：刷新不丢，调试时也能直接把某一幕的链接发给别人
@@ -50,6 +54,24 @@ function writeHash() {
   const params = new URLSearchParams({ story: state.payload.name, tab: state.tab });
   if (state.focus) params.set('node', state.focus);
   history.replaceState(null, '', `#${params}`);
+}
+
+/** 两种玩法共用一块屏幕容器，换了玩法就换一个播放器挂上去。 */
+function mountPlayer(kind) {
+  if (player && state.kind === kind) return;
+  state.kind = kind;
+  const screen = $('#screen');
+  screen.className = '';
+  if (kind === 'explore') {
+    player = new ExplorePlayer(document, screen);
+    player.onChange = draw;
+  } else {
+    player = new Player(document, screen);
+    player.onChoose = (index) => {
+      state.engine.choose(index);
+      draw();
+    };
+  }
 }
 
 async function json(url) {
@@ -83,7 +105,9 @@ function renderTabs() {
   const tab = (key, label) =>
     `<button class="tab${key === state.tab ? ' is-active' : ''}" data-tab="${esc(key)}">${esc(label)}</button>`;
   $('#tabs').innerHTML = `
-    <div class="tabrow"><span class="tabrow-h">剧情</span>${STORY_TABS.map((t) => tab(t.key, t.label)).join('')}</div>
+    <div class="tabrow"><span class="tabrow-h">剧情</span>${STORY_TABS.map((t) =>
+      tab(t.key, t.key === 'graph' && state.kind === 'explore' ? '状态图' : t.label)
+    ).join('')}</div>
     <div class="tabrow"><span class="tabrow-h">角色</span>${
       characters.map((c) => tab(`char:${c.key}`, c.name)).join('') ||
       '<span class="tabrow-empty">这部没有角色设定</span>'
@@ -128,7 +152,11 @@ function renderPanel() {
     body.innerHTML = '<p class="empty">载入中…</p>';
     return;
   }
-  if (state.tab === 'graph') {
+  if (state.tab === 'graph' && state.kind === 'explore') {
+    body.innerHTML = state.focus
+      ? explorePanel.renderNode(payload, state.engine, state.focus)
+      : explorePanel.renderMap(payload, state.engine);
+  } else if (state.tab === 'graph') {
     body.innerHTML = state.focus
       ? scene.render(payload.story, state.focus, {
           assets: payload.assets,
@@ -167,10 +195,14 @@ function leaveScene() {
 /** 调试用：不管变量对不对得上，直接把播放器切到这一幕。能「上一步」退回来。 */
 function jumpTo(id) {
   const engine = state.engine;
-  engine.pushHistory();
-  engine.finished = false;
-  engine.ending = null;
-  engine.enterNode(id);
+  if (state.kind === 'explore') {
+    engine.jump(id);
+  } else {
+    engine.pushHistory();
+    engine.finished = false;
+    engine.ending = null;
+    engine.enterNode(id);
+  }
   draw();
 }
 
@@ -201,7 +233,10 @@ function draw() {
 
 async function open(name, view = {}) {
   state.payload = await json(`/api/story/${encodeURIComponent(name)}.json`);
-  state.engine = new Engine(state.payload.story);
+  const kind = state.payload.story?.engine === 'explore' ? 'explore' : 'vn';
+  mountPlayer(kind);
+  state.engine = kind === 'explore' ? new ExploreEngine(state.payload.story) : new Engine(state.payload.story);
+  $('#vars').innerHTML = '';
   const known = new Set(['graph', 'scenes', 'cgs', ...(state.payload.cast?.characters || []).map((c) => `char:${c.key}`)]);
   state.tab = known.has(view.tab) ? view.tab : 'graph';
   state.focus = state.tab === 'graph' && state.payload.story.nodes.some((n) => n.id === view.node) ? view.node : null;
@@ -249,11 +284,6 @@ $('#tabbody').addEventListener('click', (ev) => {
   return undefined;
 });
 
-player.onChoose = (index) => {
-  state.engine.choose(index);
-  draw();
-};
-
 $('#btn-next').addEventListener('click', () => {
   state.engine.next();
   draw();
@@ -271,6 +301,8 @@ $('#btn-music').addEventListener('click', () => {
   syncMusic();
 });
 $('#screen').addEventListener('click', (ev) => {
+  // 探索玩法的屏幕自己管点击：点台词、点行动、点背包各有各的意思
+  if (state.kind !== 'vn') return;
   if (ev.target.closest('.choices, .ending')) return;
   if (state.engine?.canNext) {
     state.engine.next();
@@ -292,7 +324,7 @@ document.addEventListener('keydown', (ev) => {
   } else if (ev.key === 'ArrowLeft') {
     state.engine?.prev();
     draw();
-  } else if (/^[1-9]$/.test(ev.key)) {
+  } else if (state.kind === 'vn' && /^[1-9]$/.test(ev.key)) {
     const choice = state.engine?.choices?.[Number(ev.key) - 1];
     if (choice) {
       state.engine.choose(choice.index);

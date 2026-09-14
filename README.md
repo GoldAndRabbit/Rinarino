@@ -17,6 +17,17 @@ uv run uvicorn backend.app.main:app --reload --port 8811
 面板里的图全部悬停放大，每张都挂着它真正用过的生成 prompt。当前视图写在地址栏里
 （`#story=…&tab=…&node=…`），刷新不丢。
 
+## 两种玩法
+
+- **分支剧情**（默认）—— 视觉小说：台词、立绘、选项、好感度，剧本是 ink 编译出来的 `story.json`
+- **探索解谜**（`"engine": "explore"`）—— 参照《Stanley 博士的家》的密室逃脱：
+  在房子里走动、调查、把道具用在对的地方、输密码开门。剧情是一张**有状态的图**，
+  编剧只写 JSON（Node / Condition / Effect / Event / State 五个概念），
+  引擎自带 `validate()` 查剧本、`solve()` 证明每个结局都解得开。示例是《十一点四十七分》，
+  写法见 [docs/explore.md](docs/explore.md)
+
+两种玩法共用宿主、素材管线、调试面板和打包，调试面板按玩法各画各的（剧情图 / 状态图）。
+
 ## 布局
 
 ```
@@ -25,7 +36,8 @@ vn_workflow/    生成端：一句设定 → 素材，只往 vn/stories/<名字>
 vn/             产物：素材 + 编译好的 story.json，外加 dist/<名字>.html
 backend/        FastAPI：把产物端给前端，一行都不 import 生成端
 frontend/       原生 JS，无构建步骤
-                engine/ 公用播放端（引擎 + 播放器 + 播放区样式），单文件页也用这一份
+                engine/ 分支剧情的播放端（引擎 + 播放器 + 播放区样式），单文件页也用这一份
+                explore/ 探索解谜的播放端，同上
                 js/ css/ 宿主 WebUI：小说列表 + 调试面板（剧情图 / 这一幕 / 素材 / 角色）
 config/         llm_api.yaml —— 文本 / 生图 / 视频三个 provider 的配置
 docs/           vn_workflow.md —— 流水线六段的详细说明
