@@ -42,6 +42,13 @@ audio.volume = 0.35;
 let player = null;
 const zoomer = zoom.install($('#tabbody'));
 
+// 可解性在后台算完了：人还停在这部剧本的状态图上，就把面板重画一遍
+explorePanel.whenSolved((story) => {
+  if (state.kind === 'explore' && state.payload?.story === story && state.tab === 'graph' && !state.focus) {
+    renderPanel();
+  }
+});
+
 // 当前视图写进地址栏：刷新不丢，调试时也能直接把某一幕的链接发给别人
 //   #story=americano&tab=char:zhi   #story=americano&tab=graph&node=opening
 function readHash() {

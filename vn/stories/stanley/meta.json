@@ -1,0 +1,19 @@
+{
+  "story": "stanley",
+  "title": "Stanley博士的家（复刻）",
+  "subtitle": "EXPLORE · 复刻第一代 · 仅供本地研究",
+  "shape": "explore",
+  "tagline": "侦探 James 受邀来到 Stanley 博士家，屋里却一个人都没有。门口的树上，卡着一只写着 HELP 的纸飞机。",
+  "notice": "复刻 James Li（雪夜公爵）2005 年的《Stanley博士的家》第一代的房间、谜题与剧情结构，文字为重写。原作版权归原作者所有，本复刻仅用于本地研究新引擎，请勿公开发布。",
+  "cover": null,
+  "vars": {},
+  "endings": { "end_truth": { "title": "真相", "kind": "true" } },
+  "ui": {
+    "narrator": "旁白",
+    "next": "下一句",
+    "prev": "上一步",
+    "restart": "重开",
+    "music_on": "音乐 开",
+    "music_off": "音乐 关"
+  }
+}

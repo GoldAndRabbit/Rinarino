@@ -1,0 +1,969 @@
+{
+  "engine": "explore",
+  "version": 1,
+  "title": "Stanley博士的家（复刻）",
+  "start": "garage",
+  "state": { "inventory": [], "flags": {} },
+  "flags": {
+    "front_open": { "label": "大门开了" },
+    "plane_read": { "label": "看过纸飞机上的字" },
+    "dog_asleep": { "label": "大狗睡着了" },
+    "teal_open": { "label": "青绿色门开了" },
+    "grey_open": { "label": "灰色门开了" },
+    "grey_bath_open": { "label": "灰房浴室开了" },
+    "green_open": { "label": "绿色门开了" },
+    "candle_lit": { "label": "蜡烛点亮了" },
+    "back_door_broken": { "label": "厨房后门被弄坏了" },
+    "pink_open": { "label": "粉色双开门开了" },
+    "blue_open": { "label": "蓝色门开了" },
+    "knocked_out": { "label": "被人打晕过" },
+    "recovered": { "label": "找回了东西" },
+    "orange_open": { "label": "橙色门开了" },
+    "pea_open": { "label": "豆绿色门开了" },
+    "diary_read": { "label": "读过日记" },
+    "old_in_bed": { "label": "老人扶上了床" },
+    "old_drank": { "label": "老人喝了水" },
+    "mirror_seen": { "label": "推开了镜子" },
+    "wall_open": { "label": "暗墙打开了" },
+    "statue_placed": { "label": "雕像放进凹槽" },
+    "lights_seen": { "label": "关灯看过色点" },
+    "slot_top": { "label": "最上面的孔插好了" },
+    "slot_ur": { "label": "右上的孔插好了" },
+    "slot_lr": { "label": "右下的孔插好了" },
+    "slot_bottom": { "label": "最下面的孔插好了" },
+    "slot_ll": { "label": "左下的孔插好了" },
+    "slot_ul": { "label": "左上的孔插好了" },
+    "slot_center": { "label": "正中间的孔插好了" },
+    "files_given": { "label": "文件交给了老人" },
+    "phone_ready": { "label": "电话接好了线" }
+  },
+  "items": {
+    "stick": { "name": "木棍", "desc": "车库地上捡的长木棍。" },
+    "plane": {
+      "name": "纸飞机",
+      "desc": "从树上钩下来的纸飞机，折得很仓促。",
+      "examine": {
+        "effects": [{ "type": "set", "key": "plane_read", "value": true }],
+        "events": [{ "type": "narrate", "text": "展开纸飞机，上面用红笔写着大大的 HELP，底下是一串数字：825731。" }]
+      }
+    },
+    "lighter": { "name": "打火机", "desc": "一只金色的打火机。" },
+    "teal_key": { "name": "青绿色钥匙", "desc": "钥匙柄是青绿色的。" },
+    "grey_key": { "name": "灰色钥匙", "desc": "钥匙柄是灰色的。" },
+    "silver_key": { "name": "小银钥匙", "desc": "一把很小的银钥匙，像是开浴室门的。" },
+    "green_key": { "name": "绿色钥匙", "desc": "钥匙柄是绿色的，还湿着。" },
+    "plate": { "name": "盘子", "desc": "一只干净的白瓷盘。" },
+    "sauce": { "name": "牛排酱", "desc": "一瓶牛排酱，还剩大半瓶。" },
+    "meat": { "name": "生肉", "desc": "一大块生肉。" },
+    "plated_meat": { "name": "一盘生肉", "desc": "肉放在盘子里，还差点什么。" },
+    "steak": { "name": "浇酱的肉", "desc": "浇满了牛排酱，闻着很香。" },
+    "statue": { "name": "蓝色雕像", "desc": "一尊蓝色的小雕像，底座的形状很怪。" },
+    "pink_key": { "name": "粉色钥匙", "desc": "钥匙柄是粉色的。" },
+    "cup": { "name": "空杯子", "desc": "一只玻璃杯。" },
+    "water": { "name": "一杯水", "desc": "满满一杯清水。" },
+    "blue_key": { "name": "蓝色钥匙", "desc": "钥匙柄是蓝色的。" },
+    "diary": {
+      "name": "日记",
+      "desc": "一本高高的褐色日记，大部分页都被撕掉了。",
+      "examine": {
+        "effects": [{ "type": "set", "key": "diary_read", "value": true }],
+        "events": [{ "type": "narrate", "text": "翻到最后剩下的一页，页角用铅笔写着一串数字：18669798。" }]
+      }
+    },
+    "orange_key": { "name": "橙色钥匙", "desc": "钥匙柄是橙色的，沾着烟灰。" },
+    "pea_key": { "name": "豆绿色钥匙", "desc": "钥匙柄是浅浅的豆绿色。" },
+    "phone_cord": { "name": "电话线", "desc": "一卷电话线，两头的插口都是好的。" },
+    "files": { "name": "文件袋", "desc": "黑色的文件袋，封口印着「绝密」。你没有拆开。" }
+  },
+  "recipes": [
+    {
+      "items": ["plate", "meat"],
+      "result": "plated_meat",
+      "events": [{ "type": "narrate", "text": "你把生肉放进盘子里。" }]
+    },
+    {
+      "items": ["plated_meat", "sauce"],
+      "result": "steak",
+      "events": [{ "type": "narrate", "text": "你往肉上浇了厚厚一层牛排酱。" }]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "garage",
+      "kind": "room",
+      "label": "车库",
+      "bg": "bg_garage",
+      "text": "车库里停着一辆黑色的奔驰，屋子里静悄悄的。",
+      "first": {
+        "events": [{ "type": "narrate", "text": "你是侦探 James。Stanley 博士写信请你今天务必来一趟，可到了门口，一个人都没有。" }]
+      },
+      "choices": [
+        {
+          "id": "take_stick",
+          "kind": "act",
+          "once": true,
+          "text": "车旁边的地上",
+          "effects": [{ "type": "add_item", "item": "stick" }],
+          "events": [{ "type": "narrate", "text": "地上有一根长木棍。" }]
+        },
+        { "text": "去大门", "next": "gate" }
+      ]
+    },
+    {
+      "id": "gate",
+      "kind": "room",
+      "label": "大门",
+      "bg": "bg_gate",
+      "text": "大门锁着，门边嵌着一个数字密码盘。门口的大树上卡着一只纸飞机。",
+      "choices": [
+        {
+          "id": "hook_plane",
+          "kind": "use",
+          "use": "stick",
+          "once": true,
+          "text": "树上的纸飞机",
+          "hint": "太高了，够不着。得找个长点的东西。",
+          "effects": [{ "type": "add_item", "item": "plane" }],
+          "events": [{ "type": "narrate", "text": "你用木棍把纸飞机钩了下来。" }]
+        },
+        {
+          "id": "front_code",
+          "kind": "code",
+          "code": "825731",
+          "prompt": "六位数字",
+          "once": true,
+          "text": "门边的密码盘",
+          "effects": [{ "type": "set", "key": "front_open", "value": true }],
+          "events": [{ "type": "narrate", "text": "密码盘嘀的一声，门锁弹开了。" }],
+          "fail": { "events": [{ "type": "narrate", "text": "密码盘嘀嘀响了两声，没开。" }] },
+          "next": "hall"
+        },
+        {
+          "text": "进屋",
+          "condition": { "key": "front_open", "operator": "eq", "value": true },
+          "hidden": true,
+          "next": "hall"
+        },
+        { "text": "绕到院子右边", "next": "yard" },
+        { "text": "回车库", "next": "garage" }
+      ]
+    },
+    {
+      "id": "yard",
+      "kind": "room",
+      "label": "侧院",
+      "bg": "bg_yard",
+      "text": [
+        {
+          "condition": { "key": "dog_asleep", "operator": "eq", "value": true },
+          "text": "大狗趴在地上打着呼噜。石台就在旁边。"
+        },
+        { "text": "侧院里拴着一条大狗，一看见你就龇牙低吼。它身后的石台上摆着一尊蓝色的小雕像。" }
+      ],
+      "choices": [
+        {
+          "id": "feed_dog",
+          "kind": "use",
+          "use": "steak",
+          "consume": true,
+          "text": "把东西递给大狗",
+          "condition": { "not": { "key": "dog_asleep", "operator": "eq", "value": true } },
+          "hidden": true,
+          "fail_text": "大狗闻都不闻，还是冲你叫。",
+          "effects": [{ "type": "set", "key": "dog_asleep", "value": true }],
+          "events": [{ "type": "narrate", "text": "大狗几口就吞了下去，没过一会儿，趴在地上睡着了。" }]
+        },
+        {
+          "id": "take_statue",
+          "kind": "act",
+          "once": true,
+          "text": "石台上的蓝色雕像",
+          "condition": { "key": "dog_asleep", "operator": "eq", "value": true },
+          "locked_text": "大狗守在石台边，你一靠近它就扑过来。",
+          "effects": [{ "type": "add_item", "item": "statue" }],
+          "events": [{ "type": "narrate", "text": "你拿起雕像。底座是个说不出名字的形状。" }]
+        },
+        { "text": "回大门", "next": "gate" }
+      ]
+    },
+    {
+      "id": "hall",
+      "kind": "room",
+      "label": "一楼",
+      "bg": "bg_hall",
+      "text": "一楼大厅空无一人。左手边一扇黄门，走廊里还有带条纹的青绿色门、灰色门和绿色门，楼梯底下是一对粉色的双开门。",
+      "choices": [
+        { "text": "黄色的门", "next": "yellow_room" },
+        {
+          "id": "open_teal",
+          "kind": "use",
+          "use": "teal_key",
+          "once": true,
+          "text": "带条纹的青绿色门",
+          "effects": [{ "type": "set", "key": "teal_open", "value": true }],
+          "next": "teal_room"
+        },
+        {
+          "text": "进青绿色房间",
+          "condition": { "key": "teal_open", "operator": "eq", "value": true },
+          "hidden": true,
+          "next": "teal_room"
+        },
+        {
+          "id": "open_grey",
+          "kind": "use",
+          "use": "grey_key",
+          "once": true,
+          "text": "灰色的门",
+          "effects": [{ "type": "set", "key": "grey_open", "value": true }],
+          "next": "grey_room"
+        },
+        {
+          "text": "进灰色房间",
+          "condition": { "key": "grey_open", "operator": "eq", "value": true },
+          "hidden": true,
+          "next": "grey_room"
+        },
+        {
+          "id": "open_green",
+          "kind": "use",
+          "use": "green_key",
+          "once": true,
+          "text": "绿色的门",
+          "effects": [{ "type": "set", "key": "green_open", "value": true }],
+          "next": "kitchen"
+        },
+        {
+          "text": "进绿色房间",
+          "condition": { "key": "green_open", "operator": "eq", "value": true },
+          "hidden": true,
+          "next": "kitchen"
+        },
+        {
+          "id": "open_pink",
+          "kind": "use",
+          "use": "pink_key",
+          "once": true,
+          "text": "粉色的双开门",
+          "effects": [{ "type": "set", "key": "pink_open", "value": true }],
+          "next": "pink_room"
+        },
+        {
+          "text": "进粉色房间",
+          "condition": { "key": "pink_open", "operator": "eq", "value": true },
+          "hidden": true,
+          "next": "pink_room"
+        },
+        { "text": "上楼", "next": "upstairs" },
+        { "text": "出大门", "next": "gate" }
+      ]
+    },
+    {
+      "id": "yellow_room",
+      "kind": "room",
+      "label": "黄门",
+      "bg": "bg_yellow",
+      "text": "黄门后面是个洗手间。墙角的水管后面有什么东西在反光。",
+      "choices": [
+        {
+          "id": "take_lighter",
+          "kind": "act",
+          "once": true,
+          "text": "水管后面",
+          "effects": [{ "type": "add_item", "item": "lighter" }],
+          "events": [{ "type": "narrate", "text": "是一只金色的打火机。" }]
+        },
+        { "text": "回大厅", "next": "hall" }
+      ]
+    },
+    {
+      "id": "upstairs",
+      "kind": "room",
+      "label": "二楼",
+      "bg": "bg_upstairs",
+      "text": "二楼走廊。一间卫生间，还有蓝色、橙色、豆绿色三扇门。走廊尽头还有一扇绿门，锁孔的形状从来没见过。",
+      "choices": [
+        {
+          "id": "take_pink",
+          "kind": "act",
+          "once": true,
+          "text": "楼梯扶手上",
+          "condition": { "done": "take_statue" },
+          "hidden": true,
+          "effects": [{ "type": "add_item", "item": "pink_key" }],
+          "events": [{ "type": "narrate", "text": "楼梯扶手上多了一把粉色钥匙——刚才上楼时明明还没有。有人在这屋子里走动。" }]
+        },
+        { "text": "卫生间", "next": "bath_up" },
+        {
+          "id": "open_blue",
+          "kind": "use",
+          "use": "blue_key",
+          "once": true,
+          "text": "蓝色的门",
+          "effects": [
+            { "type": "set", "key": "blue_open", "value": true },
+            { "type": "set", "key": "knocked_out", "value": true },
+            { "type": "stash", "name": "toolbox" }
+          ],
+          "events": [
+            { "type": "narrate", "text": "门刚推开一条缝，后脑勺就挨了重重一下。倒下之前，你只看见一个佝偻的人影。" }
+          ],
+          "next": "grey_room"
+        },
+        {
+          "text": "进蓝色房间",
+          "condition": {
+            "all": [
+              { "key": "blue_open", "operator": "eq", "value": true },
+              { "key": "recovered", "operator": "eq", "value": true }
+            ]
+          },
+          "hidden": true,
+          "next": "blue_room"
+        },
+        {
+          "id": "blue_wary",
+          "kind": "act",
+          "text": "蓝色的门",
+          "condition": {
+            "all": [
+              { "key": "blue_open", "operator": "eq", "value": true },
+              { "not": { "key": "recovered", "operator": "eq", "value": true } }
+            ]
+          },
+          "hidden": true,
+          "events": [{ "type": "narrate", "text": "刚在这门口挨了一闷棍。两手空空再进去，太冒险了。" }]
+        },
+        {
+          "id": "open_orange",
+          "kind": "use",
+          "use": "orange_key",
+          "once": true,
+          "text": "橙色的门",
+          "effects": [{ "type": "set", "key": "orange_open", "value": true }],
+          "next": "orange_room"
+        },
+        {
+          "text": "进橙色房间",
+          "condition": { "key": "orange_open", "operator": "eq", "value": true },
+          "hidden": true,
+          "next": "orange_room"
+        },
+        {
+          "id": "open_pea",
+          "kind": "use",
+          "use": "pea_key",
+          "once": true,
+          "text": "豆绿色的门",
+          "effects": [{ "type": "set", "key": "pea_open", "value": true }],
+          "next": "pea_room"
+        },
+        {
+          "text": "进豆绿色房间",
+          "condition": { "key": "pea_open", "operator": "eq", "value": true },
+          "hidden": true,
+          "next": "pea_room"
+        },
+        {
+          "id": "green_door",
+          "kind": "act",
+          "text": "走廊尽头的绿门",
+          "events": [{ "type": "narrate", "text": "你手里没有一把钥匙插得进去。门缝里透出一点蓝光，里面嗡嗡作响，像是什么机器在运转。" }]
+        },
+        { "text": "下楼", "next": "hall" }
+      ]
+    },
+    {
+      "id": "bath_up",
+      "kind": "room",
+      "label": "卫生间",
+      "bg": "bg_bath_up",
+      "text": "二楼的卫生间。手纸盒上面好像放着什么。",
+      "choices": [
+        {
+          "id": "take_teal",
+          "kind": "act",
+          "once": true,
+          "text": "手纸盒上面",
+          "effects": [{ "type": "add_item", "item": "teal_key" }],
+          "events": [{ "type": "narrate", "text": "手纸盒上放着一把青绿色的钥匙。" }]
+        },
+        { "text": "回走廊", "next": "upstairs" }
+      ]
+    },
+    {
+      "id": "teal_room",
+      "kind": "room",
+      "label": "青绿门",
+      "bg": "bg_teal",
+      "text": "房间里摆着一盆很大的绿植，别的什么都没有。",
+      "choices": [
+        {
+          "id": "take_grey",
+          "kind": "act",
+          "once": true,
+          "text": "绿植的花盆",
+          "effects": [{ "type": "add_item", "item": "grey_key" }],
+          "events": [{ "type": "narrate", "text": "拨开叶子，花盆的土里埋着一把灰色钥匙。" }]
+        },
+        { "text": "回大厅", "next": "hall" }
+      ]
+    },
+    {
+      "id": "grey_room",
+      "kind": "room",
+      "label": "灰门",
+      "bg": "bg_grey",
+      "text": [
+        {
+          "condition": {
+            "all": [
+              { "key": "knocked_out", "operator": "eq", "value": true },
+              { "not": { "key": "recovered", "operator": "eq", "value": true } }
+            ]
+          },
+          "text": "你在灰色房间的地板上醒过来，头疼得厉害。口袋里的东西全被搜走了。"
+        },
+        { "text": "灰色房间里有一张床、一张书桌，桌上放着一部没接线的电话。左边还有一扇小门。" }
+      ],
+      "choices": [
+        {
+          "id": "take_silver",
+          "kind": "act",
+          "once": true,
+          "text": "枕头底下",
+          "effects": [{ "type": "add_item", "item": "silver_key" }],
+          "events": [{ "type": "narrate", "text": "枕头底下压着一把小银钥匙。" }]
+        },
+        {
+          "id": "open_grey_bath",
+          "kind": "use",
+          "use": "silver_key",
+          "consume": true,
+          "once": true,
+          "text": "左边的小门",
+          "effects": [{ "type": "set", "key": "grey_bath_open", "value": true }],
+          "next": "grey_bath"
+        },
+        {
+          "text": "进浴室",
+          "condition": { "key": "grey_bath_open", "operator": "eq", "value": true },
+          "hidden": true,
+          "next": "grey_bath"
+        },
+        {
+          "id": "plug_phone",
+          "kind": "use",
+          "use": "phone_cord",
+          "consume": true,
+          "once": true,
+          "text": "书桌上的电话",
+          "condition": { "key": "files_given", "operator": "eq", "value": true },
+          "locked_text": "电话没有线。就算接上，你也还不知道该打给谁。",
+          "effects": [{ "type": "set", "key": "phone_ready", "value": true }],
+          "events": [{ "type": "narrate", "text": "你把电话线插好，听筒里传来了拨号音。" }]
+        },
+        {
+          "id": "call",
+          "kind": "act",
+          "text": "拿起电话拨号",
+          "condition": { "key": "phone_ready", "operator": "eq", "value": true },
+          "hidden": true,
+          "next": "end_truth"
+        },
+        { "text": "回大厅", "next": "hall" }
+      ]
+    },
+    {
+      "id": "grey_bath",
+      "kind": "room",
+      "label": "浴室",
+      "bg": "bg_grey_bath",
+      "text": "小小的浴室，洗手池的水龙头拧得很紧。",
+      "choices": [
+        {
+          "id": "take_green",
+          "kind": "act",
+          "once": true,
+          "text": "拧开水龙头",
+          "effects": [{ "type": "add_item", "item": "green_key" }],
+          "events": [{ "type": "narrate", "text": "水流了几下，一把绿色钥匙从水龙头里掉了出来。" }]
+        },
+        { "text": "回灰色房间", "next": "grey_room" }
+      ]
+    },
+    {
+      "id": "kitchen",
+      "kind": "room",
+      "label": "厨房",
+      "bg": "bg_kitchen",
+      "text": "绿门后面是厨房。灶台上放着盘子和一瓶牛排酱。旁边有扇小门通往一间黑屋子，右边的门通向侧院。",
+      "first": {
+        "events": [{ "type": "narrate", "text": "窗外有个人影一闪就不见了——有人在外面看着你。" }]
+      },
+      "choices": [
+        {
+          "id": "take_plate",
+          "kind": "act",
+          "once": true,
+          "text": "灶台上的盘子",
+          "effects": [{ "type": "add_item", "item": "plate" }]
+        },
+        {
+          "id": "take_sauce",
+          "kind": "act",
+          "once": true,
+          "text": "牛排酱",
+          "effects": [{ "type": "add_item", "item": "sauce" }]
+        },
+        { "text": "旁边的小黑屋", "next": "dark_room" },
+        {
+          "id": "back_door",
+          "text": "右边通向侧院的门",
+          "condition": { "not": { "key": "back_door_broken", "operator": "eq", "value": true } },
+          "hidden": true,
+          "effects": [{ "type": "set", "key": "back_door_broken", "value": true }],
+          "events": [{ "type": "narrate", "text": "你刚走出去，身后的门就咔哒一声锁死了。回头看，锁芯被人从里面弄坏了。" }],
+          "next": "yard"
+        },
+        {
+          "id": "back_door_stuck",
+          "kind": "act",
+          "text": "右边通向侧院的门",
+          "condition": { "key": "back_door_broken", "operator": "eq", "value": true },
+          "hidden": true,
+          "events": [{ "type": "narrate", "text": "门锁被人弄坏了，从这边怎么也打不开。" }]
+        },
+        { "text": "回大厅", "next": "hall" }
+      ]
+    },
+    {
+      "id": "dark_room",
+      "kind": "room",
+      "label": "小黑屋",
+      "bg": [
+        { "condition": { "key": "candle_lit", "operator": "eq", "value": true }, "id": "bg_candle_room" },
+        { "id": "bg_dark_room" }
+      ],
+      "text": [
+        {
+          "condition": { "key": "candle_lit", "operator": "eq", "value": true },
+          "text": "烛光照着这间小屋，墙边有个木箱。"
+        },
+        { "text": "屋里黑漆漆的，只摸得到桌上有根蜡烛。" }
+      ],
+      "choices": [
+        {
+          "id": "light_candle",
+          "kind": "use",
+          "use": "lighter",
+          "once": true,
+          "text": "桌上的蜡烛",
+          "hint": "太黑了，得先把蜡烛点上。",
+          "effects": [{ "type": "set", "key": "candle_lit", "value": true }],
+          "events": [
+            { "type": "bg", "id": "bg_candle_room" },
+            { "type": "narrate", "text": "蜡烛亮了。墙边有一个木箱。" }
+          ]
+        },
+        {
+          "id": "take_meat",
+          "kind": "act",
+          "once": true,
+          "text": "墙边的木箱",
+          "condition": { "key": "candle_lit", "operator": "eq", "value": true },
+          "hidden": true,
+          "effects": [{ "type": "add_item", "item": "meat" }],
+          "events": [{ "type": "narrate", "text": "箱子里是一大块生肉。" }]
+        },
+        { "text": "回厨房", "next": "kitchen" }
+      ]
+    },
+    {
+      "id": "pink_room",
+      "kind": "room",
+      "label": "粉门",
+      "bg": "bg_pink",
+      "text": "粉色的房间里有张小桌，桌上摆着一只杯子和一个水壶。左边还有一扇门。",
+      "choices": [
+        {
+          "id": "take_cup",
+          "kind": "act",
+          "once": true,
+          "text": "桌上的杯子",
+          "effects": [{ "type": "add_item", "item": "cup" }]
+        },
+        {
+          "id": "fill_cup",
+          "kind": "use",
+          "use": "cup",
+          "consume": true,
+          "once": true,
+          "text": "桌上的水壶",
+          "hint": "拿什么装水？",
+          "effects": [{ "type": "add_item", "item": "water" }],
+          "events": [{ "type": "narrate", "text": "你倒了满满一杯水。" }]
+        },
+        { "text": "左边的门", "next": "pink_inner" },
+        { "text": "回大厅", "next": "hall" }
+      ]
+    },
+    {
+      "id": "pink_inner",
+      "kind": "room",
+      "label": "粉门里屋",
+      "bg": "bg_pink_inner",
+      "text": [
+        {
+          "condition": { "key": "knocked_out", "operator": "eq", "value": true },
+          "text": "里屋的地上躺着一个一动不动的男人，刚才还没有他。他手边有个工具箱。"
+        },
+        { "text": "里屋空荡荡的，只有窗台上放着什么。" }
+      ],
+      "choices": [
+        {
+          "id": "take_blue",
+          "kind": "act",
+          "once": true,
+          "text": "窗台上",
+          "effects": [{ "type": "add_item", "item": "blue_key" }],
+          "events": [{ "type": "narrate", "text": "窗台上是一把蓝色钥匙。" }]
+        },
+        {
+          "id": "recover",
+          "kind": "act",
+          "once": true,
+          "text": "男人手边的工具箱",
+          "condition": { "key": "knocked_out", "operator": "eq", "value": true },
+          "hidden": true,
+          "effects": [
+            { "type": "unstash", "name": "toolbox" },
+            { "type": "set", "key": "recovered", "value": true }
+          ],
+          "events": [{ "type": "narrate", "text": "工具箱里装的正是你被搜走的东西，一样不少。那个男人还没醒。" }]
+        },
+        { "text": "回粉色房间", "next": "pink_room" }
+      ]
+    },
+    {
+      "id": "blue_room",
+      "kind": "room",
+      "label": "蓝门",
+      "bg": "bg_blue",
+      "text": "蓝色房间里一整面墙都是书架。左边的门通向屋顶，右边连着一间小隔间。",
+      "choices": [
+        {
+          "id": "take_diary",
+          "kind": "act",
+          "once": true,
+          "text": "书架上那本高高的褐色书",
+          "effects": [{ "type": "add_item", "item": "diary" }],
+          "events": [{ "type": "narrate", "text": "是一本日记。" }]
+        },
+        { "text": "左边的门", "next": "roof" },
+        { "text": "右边的隔间", "next": "blue_side" },
+        { "text": "回走廊", "next": "upstairs" }
+      ]
+    },
+    {
+      "id": "roof",
+      "kind": "room",
+      "label": "屋顶",
+      "bg": "bg_roof",
+      "text": "你顺着梯子爬上屋顶，风很大。烟囱旁边有什么东西在闪。",
+      "choices": [
+        {
+          "id": "take_orange",
+          "kind": "act",
+          "once": true,
+          "text": "烟囱旁边",
+          "effects": [{ "type": "add_item", "item": "orange_key" }],
+          "events": [{ "type": "narrate", "text": "烟囱旁边卡着一把橙色钥匙。" }]
+        },
+        { "text": "爬下去", "next": "blue_room" }
+      ]
+    },
+    {
+      "id": "blue_side",
+      "kind": "room",
+      "label": "隔间",
+      "bg": "bg_blue_side",
+      "text": "隔间里有一扇通向阳台的玻璃门。",
+      "choices": [
+        {
+          "id": "take_pea",
+          "kind": "act",
+          "once": true,
+          "text": "阳台门外",
+          "effects": [{ "type": "add_item", "item": "pea_key" }],
+          "events": [{ "type": "narrate", "text": "推开玻璃门，阳台的地上躺着一把豆绿色的钥匙。" }]
+        },
+        { "text": "回蓝色房间", "next": "blue_room" }
+      ]
+    },
+    {
+      "id": "pea_room",
+      "kind": "room",
+      "label": "豆绿门",
+      "bg": "bg_pea",
+      "text": "豆绿色的房间里堆满杂物，墙角放着一卷电话线。",
+      "choices": [
+        {
+          "id": "take_cord",
+          "kind": "act",
+          "once": true,
+          "text": "墙角的电话线",
+          "effects": [{ "type": "add_item", "item": "phone_cord" }]
+        },
+        { "text": "回走廊", "next": "upstairs" }
+      ]
+    },
+    {
+      "id": "orange_room",
+      "kind": "room",
+      "label": "橙门",
+      "bg": "bg_orange",
+      "text": [
+        {
+          "condition": { "key": "old_drank", "operator": "eq", "value": true },
+          "text": "老人靠在床头，眼睛一直盯着你。右边是阳台，左边是浴室。"
+        },
+        {
+          "condition": { "key": "old_in_bed", "operator": "eq", "value": true },
+          "text": "老人躺在床上，嘴唇干裂，嘴里念着「水」。右边是阳台，左边是浴室。"
+        },
+        { "text": "橙色房间里有一张空床。右边通向一个小阳台，左边是浴室。" }
+      ],
+      "choices": [
+        {
+          "id": "give_water",
+          "kind": "use",
+          "use": "water",
+          "consume": true,
+          "once": true,
+          "text": "床上的老人",
+          "condition": { "key": "old_in_bed", "operator": "eq", "value": true },
+          "hidden": true,
+          "fail_text": "老人摇摇头，只念着「水」。",
+          "effects": [{ "type": "set", "key": "old_drank", "value": true }],
+          "events": [{ "type": "say", "speaker": "老人", "text": "谢……谢谢你。有一份文件，被藏在这间屋子里……求你帮我拿回来。" }]
+        },
+        {
+          "id": "give_files",
+          "kind": "use",
+          "use": "files",
+          "consume": true,
+          "once": true,
+          "text": "醒过来的老人",
+          "condition": { "key": "old_drank", "operator": "eq", "value": true },
+          "hidden": true,
+          "effects": [{ "type": "set", "key": "files_given", "value": true }],
+          "events": [{ "type": "say", "speaker": "老人", "text": "就是它……好孩子。快去楼下的灰色房间，把电话接上。" }]
+        },
+        { "text": "右边的阳台", "next": "orange_patio" },
+        { "text": "左边的浴室", "next": "orange_bath" },
+        { "text": "回走廊", "next": "upstairs" }
+      ]
+    },
+    {
+      "id": "orange_patio",
+      "kind": "room",
+      "label": "阳台",
+      "bg": "bg_orange_patio",
+      "text": [
+        {
+          "condition": { "key": "old_in_bed", "operator": "eq", "value": true },
+          "text": "阳台上空了，只剩被风吹乱的花盆。"
+        },
+        { "text": "阳台上倒着一位白发老人，还有微弱的呼吸。" }
+      ],
+      "choices": [
+        {
+          "id": "carry_old",
+          "kind": "act",
+          "once": true,
+          "text": "扶起老人",
+          "effects": [{ "type": "set", "key": "old_in_bed", "value": true }],
+          "events": [{ "type": "narrate", "text": "你把老人扶进屋，让他躺在床上。" }]
+        },
+        { "text": "回橙色房间", "next": "orange_room" }
+      ]
+    },
+    {
+      "id": "orange_bath",
+      "kind": "room",
+      "label": "橙门浴室",
+      "bg": "bg_orange_bath",
+      "text": [
+        {
+          "condition": { "key": "wall_open", "operator": "eq", "value": true },
+          "text": "浴室的暗墙开着，星形面板就在镜子后面。"
+        },
+        { "text": "浴室里有一面很大的镜子。" }
+      ],
+      "choices": [
+        {
+          "id": "look_mirror",
+          "kind": "act",
+          "once": true,
+          "text": "那面大镜子",
+          "effects": [{ "type": "set", "key": "mirror_seen", "value": true }],
+          "events": [
+            { "type": "narrate", "text": "镜子是活动的。推开以后，后面是一块星形面板，面板上有七个钥匙孔。对面墙上还装着一个数字键盘。" }
+          ]
+        },
+        {
+          "id": "keypad",
+          "kind": "code",
+          "code": "18669798",
+          "prompt": "八位数字",
+          "once": true,
+          "text": "对面墙上的数字键盘",
+          "condition": { "key": "mirror_seen", "operator": "eq", "value": true },
+          "hidden": true,
+          "effects": [{ "type": "set", "key": "wall_open", "value": true }],
+          "events": [{ "type": "narrate", "text": "墙面缓缓移开，露出一个凹槽，形状和雕像的底座一模一样。" }],
+          "fail": { "events": [{ "type": "narrate", "text": "键盘嘀嘀响了两声。" }] }
+        },
+        {
+          "id": "put_statue",
+          "kind": "use",
+          "use": "statue",
+          "consume": true,
+          "once": true,
+          "text": "雕像形状的凹槽",
+          "condition": { "key": "wall_open", "operator": "eq", "value": true },
+          "hidden": true,
+          "effects": [{ "type": "set", "key": "statue_placed", "value": true }],
+          "events": [{ "type": "narrate", "text": "雕像严丝合缝地嵌了进去。门边的电灯开关旁亮起一个小红点。" }]
+        },
+        {
+          "id": "lights_off",
+          "kind": "act",
+          "text": "关掉浴室的灯",
+          "condition": { "key": "statue_placed", "operator": "eq", "value": true },
+          "hidden": true,
+          "effects": [{ "type": "set", "key": "lights_seen", "value": true }],
+          "events": [
+            { "type": "narrate", "text": "灯一灭，星形面板的七个孔旁边亮起不同颜色的小点：最上面粉色，右上青绿，右下橙色，最下面灰色，左下豆绿，左上蓝色，正中间绿色。" }
+          ]
+        },
+        {
+          "id": "slot_top",
+          "kind": "use",
+          "use": "pink_key",
+          "consume": true,
+          "once": true,
+          "text": "星形面板·最上面的孔",
+          "condition": { "key": "lights_seen", "operator": "eq", "value": true },
+          "hidden": true,
+          "effects": [{ "type": "set", "key": "slot_top", "value": true }],
+          "events": [{ "type": "narrate", "text": "钥匙转了一圈，孔旁的小点灭了。" }]
+        },
+        {
+          "id": "slot_ur",
+          "kind": "use",
+          "use": "teal_key",
+          "consume": true,
+          "once": true,
+          "text": "星形面板·右上的孔",
+          "condition": { "key": "lights_seen", "operator": "eq", "value": true },
+          "hidden": true,
+          "effects": [{ "type": "set", "key": "slot_ur", "value": true }],
+          "events": [{ "type": "narrate", "text": "钥匙转了一圈，孔旁的小点灭了。" }]
+        },
+        {
+          "id": "slot_lr",
+          "kind": "use",
+          "use": "orange_key",
+          "consume": true,
+          "once": true,
+          "text": "星形面板·右下的孔",
+          "condition": { "key": "lights_seen", "operator": "eq", "value": true },
+          "hidden": true,
+          "effects": [{ "type": "set", "key": "slot_lr", "value": true }],
+          "events": [{ "type": "narrate", "text": "钥匙转了一圈，孔旁的小点灭了。" }]
+        },
+        {
+          "id": "slot_bottom",
+          "kind": "use",
+          "use": "grey_key",
+          "consume": true,
+          "once": true,
+          "text": "星形面板·最下面的孔",
+          "condition": { "key": "lights_seen", "operator": "eq", "value": true },
+          "hidden": true,
+          "effects": [{ "type": "set", "key": "slot_bottom", "value": true }],
+          "events": [{ "type": "narrate", "text": "钥匙转了一圈，孔旁的小点灭了。" }]
+        },
+        {
+          "id": "slot_ll",
+          "kind": "use",
+          "use": "pea_key",
+          "consume": true,
+          "once": true,
+          "text": "星形面板·左下的孔",
+          "condition": { "key": "lights_seen", "operator": "eq", "value": true },
+          "hidden": true,
+          "effects": [{ "type": "set", "key": "slot_ll", "value": true }],
+          "events": [{ "type": "narrate", "text": "钥匙转了一圈，孔旁的小点灭了。" }]
+        },
+        {
+          "id": "slot_ul",
+          "kind": "use",
+          "use": "blue_key",
+          "consume": true,
+          "once": true,
+          "text": "星形面板·左上的孔",
+          "condition": { "key": "lights_seen", "operator": "eq", "value": true },
+          "hidden": true,
+          "effects": [{ "type": "set", "key": "slot_ul", "value": true }],
+          "events": [{ "type": "narrate", "text": "钥匙转了一圈，孔旁的小点灭了。" }]
+        },
+        {
+          "id": "slot_center",
+          "kind": "use",
+          "use": "green_key",
+          "consume": true,
+          "once": true,
+          "text": "星形面板·正中间的孔",
+          "condition": { "key": "lights_seen", "operator": "eq", "value": true },
+          "hidden": true,
+          "effects": [{ "type": "set", "key": "slot_center", "value": true }],
+          "events": [{ "type": "narrate", "text": "钥匙转了一圈，孔旁的小点灭了。" }]
+        },
+        {
+          "id": "take_files",
+          "kind": "act",
+          "once": true,
+          "text": "面板中间弹开的暗格",
+          "condition": {
+            "all": [
+              { "key": "slot_top", "operator": "eq", "value": true },
+              { "key": "slot_ur", "operator": "eq", "value": true },
+              { "key": "slot_lr", "operator": "eq", "value": true },
+              { "key": "slot_bottom", "operator": "eq", "value": true },
+              { "key": "slot_ll", "operator": "eq", "value": true },
+              { "key": "slot_ul", "operator": "eq", "value": true },
+              { "key": "slot_center", "operator": "eq", "value": true }
+            ]
+          },
+          "hidden": true,
+          "effects": [{ "type": "add_item", "item": "files" }],
+          "events": [{ "type": "narrate", "text": "七把钥匙全部插好，面板正中弹开一个暗格，里面是一个黑色的文件袋。" }]
+        },
+        { "text": "回橙色房间", "next": "orange_room" }
+      ]
+    },
+    {
+      "id": "end_truth",
+      "kind": "ending",
+      "label": "真相",
+      "bg": "bg_grey",
+      "ending": { "title": "真相", "kind": "true" },
+      "text": "电话刚接通，你忽然想起还没问过老人的名字。你冲回橙色房间——床上空了，枕头上压着一张证件。证件上的照片是 Stanley 博士，却老了几十岁。你想起倒下前看见的那个佝偻人影，个子和这位老人一模一样。二楼那扇打不开的绿门里，嗡嗡声越来越响。",
+      "enter": { "events": [{ "type": "cg", "id": "cg_end_truth" }] }
+    }
+  ],
+  "endings": ["end_truth"]
+}

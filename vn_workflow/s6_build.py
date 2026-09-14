@@ -26,8 +26,6 @@ ENGINE_DIR = FRONTEND / "engine"
 ENGINE = ENGINE_DIR / "engine.js"
 PLAYER = ENGINE_DIR / "player.js"
 PLAY_CSS = ENGINE_DIR / "play.css"
-# 探索解谜玩法的引擎和播放器。story.json 里写着 engine: explore 的才用这一套
-EXPLORE_DIR = FRONTEND / "explore"
 
 PAGE = """<!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8">
@@ -97,25 +95,6 @@ draw();
 """
 
 
-# 探索玩法的屏幕自己管点击（台词、行动、背包各有各的意思），这里只接按钮和键盘
-EXPLORE_RUNTIME = """
-const $ = (s) => document.querySelector(s);
-const engine = new ExploreEngine(DATA.story);
-const player = new ExplorePlayer(document, $('#screen'));
-player.bind(DATA);
-const draw = () => player.draw(engine);
-player.onChange = draw;
-$('#btn-next').onclick = () => { engine.next(); draw(); };
-$('#btn-prev').onclick = () => { engine.prev(); draw(); };
-$('#btn-restart').onclick = () => { engine.reset(); draw(); };
-document.addEventListener('keydown', (e) => {
-  if (e.target.matches('input')) return;
-  if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); engine.next(); draw(); }
-  if (e.key === 'ArrowLeft') { engine.prev(); draw(); }
-});
-draw();
-"""
-
 # 母版是 2560x1440 的 PNG（一张三四 MB），那是存档用的尺寸，不是上网用的。
 # 打包时统一转成 WebP 并压到够用的边长——sprite 保留 alpha。
 WEB_MAX = {"sprite": 1200, "default": 1600}
@@ -148,16 +127,18 @@ def data_uri(raw: bytes, name: str) -> str:
     return f"data:{mime};base64," + base64.b64encode(raw).decode()
 
 
-def build(story: Story, *, inline: bool = False, verbose: bool = True) -> Path:
-    compiled = story.read_json("story.json")
-    if not compiled:
-        raise SystemExit(f"[build] 还没有 story.json，先跑第 1 段：{story.name}")
-    meta = story.read_json("meta.json")
-    DIST.mkdir(parents=True, exist_ok=True)
+def inline_js(path: Path) -> str:
+    """frontend 里的源码是 ES module，内联进 <script type="module"> 之后 export 没有意义，
+    顶层的一律剥掉。打包不另写一套播放端，只是把同一份源码塞进页面。"""
+    return re.sub(r"^export ", "", path.read_text(encoding="utf-8"), flags=re.M)
 
+
+def pack_assets(story: Story, *, dist: Path, inline: bool) -> dict[str, str]:
+    """素材 id → 页面里用的地址。外挂的写进 dist/assets/<名字>/，内联的转成 data URI。
+    分支剧情（这里）和探索解谜（vn_workflow_v2）共用这一份编码逻辑。"""
     assets: dict[str, str] = {}
     sources = sorted(story.assets.iterdir()) if story.assets.is_dir() else []
-    out_assets = DIST / "assets" / story.name
+    out_assets = dist / "assets" / story.name
     if not inline:
         if out_assets.exists():
             shutil.rmtree(out_assets)
@@ -182,40 +163,39 @@ def build(story: Story, *, inline: bool = False, verbose: bool = True) -> Path:
         else:
             (out_assets / name).write_bytes(raw)
             assets.setdefault(p.stem, f"assets/{story.name}/{name}")
+    return assets
 
+
+def build(story: Story, *, inline: bool = False, verbose: bool = True) -> Path:
+    compiled = story.read_json("story.json")
+    if not compiled:
+        raise SystemExit(f"[build] 还没有 story.json，先跑第 1 段：{story.name}")
+    if compiled.get("engine") == "explore":
+        # 探索解谜是另一套引擎，工作流也分开了：这里只管分支剧情
+        raise SystemExit(f"[build] {story.name} 是探索解谜剧本，用 vn_workflow_v2 打包")
+    meta = story.read_json("meta.json")
+    DIST.mkdir(parents=True, exist_ok=True)
     payload: dict[str, Any] = {
         "story": compiled,
         "meta": meta,
         "cast": story.read_json("cast.json"),
-        "assets": assets,
+        "assets": pack_assets(story, dist=DIST, inline=inline),
     }
-
-    # frontend/engine/ 是同一份源码，打包只是把它内联进来，不另写一套播放端。
-    # 内联进 <script type="module"> 后 export 没有意义，顶层的一律剥掉。
-    def inline_js(path: Path) -> str:
-        return re.sub(r"^export ", "", path.read_text(encoding="utf-8"), flags=re.M)
-
-    # 两种玩法各带各的引擎和播放器，只内联用得到的那一套。
-    # 探索玩法的样式叠在剧情那份后面：token（颜色、字体）沿用同一份
-    explore = compiled.get("engine") == "explore"
-    play_css = PLAY_CSS.read_text(encoding="utf-8")
-    if explore:
-        play_css += "\n" + (EXPLORE_DIR / "play.css").read_text(encoding="utf-8")
     html = PAGE.format(
         title=meta.get("title") or story.name,
         subtitle=meta.get("subtitle", ""),
-        play_css=play_css,
+        play_css=PLAY_CSS.read_text(encoding="utf-8"),
         shell_css=SHELL_CSS,
-        engine=inline_js(EXPLORE_DIR / "engine.js" if explore else ENGINE),
-        player=inline_js(EXPLORE_DIR / "player.js" if explore else PLAYER),
+        engine=inline_js(ENGINE),
+        player=inline_js(PLAYER),
         data=json.dumps(payload, ensure_ascii=False),
-        runtime=EXPLORE_RUNTIME if explore else RUNTIME,
+        runtime=RUNTIME,
     )
     out = DIST / f"{story.name}.html"
     out.write_text(html, encoding="utf-8")
     if verbose:
         size = out.stat().st_size / 1024
-        how = "单文件内联" if inline else f"外挂 {len(assets)} 个素材"
+        how = "单文件内联" if inline else f"外挂 {len(payload['assets'])} 个素材"
         print(f"[build] ✓ {out.relative_to(ROOT)}  ({size:.0f}KB，{how})")
     return out
 

@@ -20,11 +20,45 @@ const esc = (s) =>
 const clip = (s, n) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
 const textWidth = (s, fs) => [...s].reduce((sum, c) => sum + (c.charCodeAt(0) < 256 ? 0.58 : 1), 0) * fs;
 
-// validate + solve 要把状态空间走一遍，一部剧本算一次就够
-const analyses = new WeakMap();
-function analysis(story) {
-  if (!analyses.has(story)) analyses.set(story, { problems: validate(story), solved: solve(story) });
-  return analyses.get(story);
+// validate 很快，当场算。solve 要把状态空间走一遍（Stanley 复刻好几秒），放主线程会卡死页面，
+// 所以丢给 Web Worker：先画「计算中」，算完通知宿主重画。一部剧本各算一次就够
+const problemsOf = new WeakMap();
+const solvedOf = new WeakMap();
+let onSolved = () => {};
+
+/** 宿主登记：某部剧本的可解性在后台算完了。 */
+export function whenSolved(fn) {
+  onSolved = fn;
+}
+
+function problemsFor(story) {
+  if (!problemsOf.has(story)) problemsOf.set(story, validate(story));
+  return problemsOf.get(story);
+}
+
+/** 算好了就返回结果，还在算返回 null（第一次调用时顺手开工）。 */
+function solvedFor(story) {
+  if (solvedOf.has(story)) return solvedOf.get(story);
+  solvedOf.set(story, null);
+  const finish = (result) => {
+    solvedOf.set(story, result);
+    onSolved(story);
+  };
+  try {
+    const worker = new Worker(new URL('./explore-solve-worker.js', import.meta.url), { type: 'module' });
+    worker.onmessage = (ev) => {
+      worker.terminate();
+      finish(ev.data);
+    };
+    worker.onerror = () => {
+      worker.terminate();
+      finish(solve(story));
+    };
+    worker.postMessage(story);
+  } catch {
+    finish(solve(story)); // 没有 Worker 的环境只好在主线程算
+  }
+  return null;
 }
 
 export function layout(story) {
@@ -209,10 +243,17 @@ function stateCard(story, engine) {
   const inv =
     engine.state.inventory.map((id) => `<span class="xm-chip">${esc(engine.itemName(id))}</span>`).join('') ||
     '<span class="xm-muted">空</span>';
+  const stashes = Object.entries(engine.state.stashes || {})
+    .map(
+      ([name, items]) => `<div class="xm-sub">被收进「${esc(name)}」</div><div class="xm-chips">${items
+        .map((id) => `<span class="xm-chip xm-muted">${esc(engine.itemName(id))}</span>`)
+        .join('')}</div>`
+    )
+    .join('');
   return `<section class="xm-card">
     <h3 class="sec-h">State <span>玩家现在是什么情况——所有条件读的都是这里</span></h3>
     <div class="xm-sub">flags</div>${flags || '<p class="xm-muted">剧本里没有 flag</p>'}
-    <div class="xm-sub">背包</div><div class="xm-chips">${inv}</div>
+    <div class="xm-sub">背包</div><div class="xm-chips">${inv}</div>${stashes}
     <div class="xm-sub">走过的地方</div>
     <p class="xm-path">${esc(engine.state.visited.map((id) => engine.nodeLabel(id)).join(' → '))}</p>
     <div class="xm-sub">做过的事 · ${engine.state.done.length}</div>
@@ -221,6 +262,12 @@ function stateCard(story, engine) {
 }
 
 function solveCard(story, solved) {
+  if (!solved) {
+    return `<section class="xm-card">
+      <h3 class="sec-h">可解性 <span>计算中…</span></h3>
+      <p class="xm-note">正在后台把状态空间走一遍。房间多的剧本要几秒，不影响先玩着。</p>
+    </section>`;
+  }
   const byId = new Map((story.nodes || []).map((n) => [n.id, n]));
   const endings = story.endings || [];
   const rows = endings
@@ -229,7 +276,7 @@ function solveCard(story, solved) {
       const title = node?.ending?.title || node?.label || id;
       const path = solved.endings[id];
       return path
-        ? `<details class="xm-solve"><summary><b>${esc(title)}</b>最短 ${path.length} 步</summary>
+        ? `<details class="xm-solve"><summary><b>${esc(title)}</b>最少做 ${path.length} 件事</summary>
             <ol>${path.map((step) => `<li>${esc(step)}</li>`).join('')}</ol></details>`
         : `<div class="xm-solve is-bad"><b>${esc(title)}</b>走不到</div>`;
     })
@@ -247,7 +294,8 @@ function solveCard(story, solved) {
 
 export function renderMap(payload, engine) {
   const story = payload.story;
-  const { problems, solved } = analysis(story);
+  const problems = problemsFor(story);
+  const solved = solvedFor(story);
   const L = layout(story);
   return `<div class="graph-head">
       <b>${story.nodes.length}</b> 个结点
@@ -272,6 +320,8 @@ function effectText(engine, e) {
   if (e.type === 'inc') return `${engine.story.flags?.[e.key]?.label || e.key} +${e.value ?? 1}`;
   if (e.type === 'add_item') return `获得「${engine.itemName(e.item)}」`;
   if (e.type === 'remove_item') return `失去「${engine.itemName(e.item)}」`;
+  if (e.type === 'stash') return `背包整个收进「${e.name}」`;
+  if (e.type === 'unstash') return `从「${e.name}」找回东西`;
   return `？${e.type}`;
 }
 

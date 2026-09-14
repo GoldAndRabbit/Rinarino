@@ -5,7 +5,7 @@
 //
 //   Node       一个地点或一段场面      前厅、地下室门口、结局
 //   Condition  现在能不能发生         {key, operator, value} · {has} · {visited} · {done} · {all|any|not}
-//   Effect     发生以后世界变成什么样   set · inc · add_item · remove_item
+//   Effect     发生以后世界变成什么样   set · inc · add_item · remove_item · stash · unstash
 //   Event      具体执行什么动作        narrate · say · bg · cg · music · sfx · toast
 //   State      玩家现在是什么情况      flags · 背包 · 去过哪 · 做过什么
 //
@@ -30,7 +30,7 @@ const OPS = {
 };
 const OP_TEXT = { eq: '=', ne: '≠', gt: '>', gte: '≥', lt: '<', lte: '≤' };
 
-export const EFFECT_TYPES = ['set', 'inc', 'add_item', 'remove_item'];
+export const EFFECT_TYPES = ['set', 'inc', 'add_item', 'remove_item', 'stash', 'unstash'];
 export const EVENT_TYPES = ['narrate', 'say', 'bg', 'cg', 'music', 'sfx', 'toast'];
 export const CHOICE_KINDS = ['go', 'act', 'use', 'code'];
 
@@ -42,6 +42,7 @@ export class ExploreEngine {
     this.byId = new Map((story.nodes || []).map((n) => [n.id, n]));
     this.items = story.items || {};
     this.recipes = story.recipes || [];
+    this.trackHistory = true; // solve() 搜索时关掉：它不需要回退，每步存一份快照纯属浪费
     this.reset();
   }
 
@@ -53,6 +54,7 @@ export class ExploreEngine {
       visited: [],
       done: [], // 成功做过的行动 id，条件 {done} 读它，once 的行动靠它藏起来
       attempts: {}, // 密码锁输错的次数
+      stashes: {}, // 被收走的背包 {名字: [道具]}：stash 整个收走，unstash 原样拿回
     };
     this.scene = { bg: null, cg: null, music: null };
     this.queue = []; // 待读的台词 {text, speaker?}：读完之前不能行动
@@ -110,14 +112,13 @@ export class ExploreEngine {
       .map((c, index) => {
         const id = this.choiceId(node, c, index);
         const ok = this.test(c.condition);
-        return {
-          ...c,
-          id,
-          index,
-          kind: c.kind || (c.next ? 'go' : 'act'),
-          locked: !ok,
-          reason: ok ? '' : c.locked_text || this.explain(c.condition),
-        };
+        const action = { ...c, id, index, kind: c.kind || (c.next ? 'go' : 'act'), locked: !ok };
+        // 锁着的原因要翻成人话，拼字符串很费；只有界面真去读的时候才算
+        Object.defineProperty(action, 'reason', {
+          enumerable: true,
+          get: () => (ok ? '' : c.locked_text || this.explain(c.condition)),
+        });
+        return action;
       })
       .filter((c) => !(c.once && this.state.done.includes(c.id)))
       .filter((c) => !(c.locked && c.hidden));
@@ -177,6 +178,15 @@ export class ExploreEngine {
           this.emit({ type: 'toast', text: `获得「${this.itemName(e.item)}」` });
         }
       } else if (e.type === 'remove_item') s.inventory = s.inventory.filter((i) => i !== e.item);
+      else if (e.type === 'stash') {
+        // 被打晕、被搜身：背包整个收进一个有名字的地方，之后在别处 unstash 找回来
+        s.stashes[e.name] = [...(s.stashes[e.name] || []), ...s.inventory];
+        s.inventory = [];
+      } else if (e.type === 'unstash') {
+        for (const item of s.stashes[e.name] || []) if (!s.inventory.includes(item)) s.inventory.push(item);
+        delete s.stashes[e.name];
+        this.emit({ type: 'toast', text: '东西都找回来了' });
+      }
       // 不认识的 type 在这里静默跳过，由 validate() 在加载时报出来——运行时崩掉就是玩家卡死
     }
   }
@@ -236,8 +246,10 @@ export class ExploreEngine {
   // --- 写：每一个会改状态的操作都先压一份快照，所以都能「上一步」 ----------------
 
   begin() {
-    this.history.push(this.snapshot());
-    if (this.history.length > 400) this.history.shift();
+    if (this.trackHistory) {
+      this.history.push(this.snapshot());
+      if (this.history.length > 400) this.history.shift();
+    }
     this.last = [];
   }
 
@@ -386,6 +398,7 @@ export function validate(story) {
     for (const e of block?.effects || []) {
       if (!EFFECT_TYPES.includes(e.type)) say(`不认识的 effect「${e.type}」`);
       if ((e.type === 'add_item' || e.type === 'remove_item') && !items[e.item]) say(`effect 里的道具「${e.item}」没有定义`);
+      if ((e.type === 'stash' || e.type === 'unstash') && !e.name) say(`${e.type} 要写 name`);
       if (e.type === 'add_item') obtainable.add(e.item);
     }
     for (const ev of block?.events || []) {
@@ -451,20 +464,167 @@ export function validate(story) {
 }
 
 // --- 可解性 ------------------------------------------------------------------
+//
+// solve() 在状态空间里做广度优先搜索，证明每个结局都走得到。二十来个房间的剧本也要能
+// 很快搜完，所以做了几件事，每件都是量出来的：
+//   1. 去重只看会影响以后的那部分状态（relevance）              十一点四十七分 6156 → 720
+//   2. 不改状态的走动不算一步：互相走得通的房间算同一个位置（区域）
+//   3. 纯拾取早做晚做都一样，一出现就捡掉，不当成分支（autoCollect）  Stanley 复刻 79514 → 16005
+// 状态数降了，每个状态的开销也得跟着降——第一版 autoCollect 对每个房间重算区域，
+// 状态少了四成、时间反而从 37 秒涨到 62 秒。所以热路径上：边一个状态只算一次，
+// 不走给界面用的 actions（那里要把锁着的原因翻成人话），不存回退快照，快照用字符串。
 
-/** 当前状态下所有「有意义」的一步：行动用对的输入去做，道具逐个检查，配方逐个组合。 */
-function moves(engine) {
+/**
+ * 状态里哪些部分会影响「以后还能发生什么」。只拿这些做去重的 key——
+ * 走过哪几个房间、看过几次大钟这种历史，不被任何条件读到就不影响可达性。
+ * 顺带收集反向引用（出现在 not 底下的道具和行动）：有人读「没有这样东西」，
+ * 捡起它就可能关掉别的路，那它就不能被当成「早捡晚捡都一样」。
+ */
+function relevance(story) {
+  const visited = new Set();
+  const done = new Set();
+  const negItems = new Set();
+  const negDone = new Set();
+  const scan = (cond, neg = false) => {
+    if (!cond) return;
+    if (Array.isArray(cond)) return cond.forEach((c) => scan(c, neg));
+    for (const k of ['all', 'any']) if (cond[k]) cond[k].forEach((c) => scan(c, neg));
+    if (cond.not) scan(cond.not, !neg);
+    if (cond.visited) visited.add(cond.visited);
+    if (cond.done) {
+      done.add(cond.done);
+      if (neg) negDone.add(cond.done);
+    }
+    if (cond.has && neg) negItems.add(cond.has);
+  };
+  for (const node of story.nodes || []) {
+    if (Array.isArray(node.text)) node.text.forEach((t) => scan(t.condition));
+    if (Array.isArray(node.bg)) node.bg.forEach((b) => scan(b.condition));
+    // 第一次进来才改状态的地方：去没去过决定那段 effect 还会不会发生
+    if (node.first?.effects?.length) visited.add(node.id);
+    (node.choices || []).forEach((c, i) => {
+      scan(c.condition);
+      if (c.once) done.add(c.id || `${node.id}#${i}`); // once 的行动做没做过决定它还在不在
+    });
+  }
+  for (const item of Object.values(story.items || {})) scan(item.examine?.condition);
+  for (const r of story.recipes || []) scan(r.condition);
+  return { visited, done, negItems, negDone };
+}
+
+/** 某个结点现在能做的事，给搜索用的精简版：不算「为什么锁着」那句人话，也不拷贝行动本身。 */
+function available(engine, nodeId) {
+  const node = engine.byId.get(nodeId);
+  if (!node || engine.ending) return [];
   const out = [];
-  const node = engine.node;
-  for (const a of engine.actions) {
-    if (a.locked) continue;
-    const label = `${node.label || node.id}：${a.text}`;
-    if (a.kind === 'code') out.push({ label: `${label}（${a.code}）`, run: (e) => e.choose(a.index, a.code).ok });
-    else if (a.kind === 'use') {
-      if (engine.state.inventory.includes(a.use)) {
-        out.push({ label: `${label}（用「${engine.itemName(a.use)}」）`, run: (e) => e.choose(a.index, a.use).ok });
+  (node.choices || []).forEach((c, index) => {
+    const id = c.id || `${node.id}#${index}`;
+    if (c.once && engine.state.done.includes(id)) return;
+    const ok = engine.test(c.condition);
+    if (!ok && c.hidden) return;
+    out.push({ c, id, index, kind: c.kind || (c.next ? 'go' : 'act'), locked: !ok });
+  });
+  return out;
+}
+
+/** 不改状态的走动：go、自己不带 effect、进门也不会改状态的地方。 */
+function isFreeGo(engine, a, rel) {
+  if (a.kind !== 'go' || a.locked || !a.c.next || a.c.effects?.length) return false;
+  const target = engine.byId.get(a.c.next);
+  if (!target || target.kind === 'ending' || target.enter?.effects?.length) return false;
+  const unseen = !engine.state.visited.includes(target.id);
+  return !(unseen && (target.first?.effects?.length || rel.visited.has(target.id)));
+}
+
+/** 这个状态下所有「不改状态就能走」的边，一次算完。 */
+function freeGraph(engine, rel) {
+  const graph = new Map();
+  for (const id of engine.byId.keys()) {
+    graph.set(
+      id,
+      available(engine, id)
+        .filter((a) => isFreeGo(engine, a, rel))
+        .map((a) => a.c.next)
+    );
+  }
+  return graph;
+}
+
+/** 从 from 出发顺着（reverse 时逆着）自由边能到哪些结点。 */
+function reach(graph, from, reverse = false) {
+  let edges = graph;
+  if (reverse) {
+    edges = new Map();
+    for (const [id, outs] of graph) for (const to of outs) edges.set(to, [...(edges.get(to) || []), id]);
+  }
+  const seen = new Set([from]);
+  const stack = [from];
+  while (stack.length) {
+    for (const to of edges.get(stack.pop()) || []) {
+      if (!seen.has(to)) {
+        seen.add(to);
+        stack.push(to);
       }
-    } else out.push({ label, run: (e) => e.choose(a.index).ok });
+    }
+  }
+  return seen;
+}
+
+/** 纯拾取：只往背包里加东西，没有任何条件读「没有这样东西」或「没做过这件事」。 */
+function isPickup(a, rel) {
+  if (a.locked || a.c.next || a.kind === 'use' || a.kind === 'code') return false;
+  if (!a.c.effects?.length || rel.negDone.has(a.id)) return false;
+  return a.c.effects.every((e) => e.type === 'add_item' && !rel.negItems.has(e.item));
+}
+
+/**
+ * 捡东西这种事早做晚做都一样，一出现就直接做掉、不当成分支。
+ * 只捡「去得了、也回得来」的房间里的（正反两个方向都顺着自由边可达）：
+ * 否则「顺手捡了」会把人带到回不来的地方。改 flag 的一律不算——
+ * 检查旧照片会关掉「修好了」那个结局，早做晚做不一样。
+ */
+function autoCollect(engine, rel) {
+  const taken = [];
+  for (let found = true; found; ) {
+    found = false;
+    const graph = freeGraph(engine, rel);
+    const back = reach(graph, engine.current, true);
+    for (const room of reach(graph, engine.current)) {
+      if (!back.has(room)) continue;
+      for (const a of available(engine, room)) {
+        if (!isPickup(a, rel)) continue;
+        engine.apply(a.c.effects);
+        if (!engine.state.done.includes(a.id)) engine.state.done.push(a.id);
+        taken.push(`${engine.nodeLabel(room)}：${a.c.text}`);
+        found = true;
+      }
+    }
+  }
+  return taken;
+}
+
+/** 当前状态下所有有意义的一步：区域里每个房间里会改状态的行动，外加检查道具、组合配方。 */
+function moves(engine, rel) {
+  const out = [];
+  for (const room of reach(freeGraph(engine, rel), engine.current)) {
+    const where = engine.nodeLabel(room);
+    for (const a of available(engine, room)) {
+      if (a.locked || isFreeGo(engine, a, rel)) continue;
+      const { c, index } = a;
+      const act = (e, input) => {
+        e.current = room;
+        return e.choose(index, input).ok;
+      };
+      if (a.kind === 'code') {
+        out.push({ label: `${where}：${c.text}（${c.code}）`, run: (e) => act(e, c.code) });
+      } else if (a.kind === 'use') {
+        if (engine.state.inventory.includes(c.use)) {
+          out.push({ label: `${where}：${c.text}（用「${engine.itemName(c.use)}」）`, run: (e) => act(e, c.use) });
+        }
+      } else {
+        out.push({ label: `${where}：${c.text}`, run: (e) => act(e, null) });
+      }
+    }
   }
   for (const id of engine.state.inventory) {
     if (engine.items[id]?.examine) out.push({ label: `检查「${engine.itemName(id)}」`, run: (e) => e.examine(id) });
@@ -478,81 +638,67 @@ function moves(engine) {
   return out;
 }
 
-/**
- * 状态里哪些部分会影响「以后还能发生什么」。只拿这些做去重的 key——
- * 走过哪几个房间、看过几次大钟这种历史，不被任何条件读到就不影响可达性，
- * 全放进 key 里的话，同一个局面会因为来路不同被当成几万个状态，搜不完。
- */
-function relevance(story) {
-  const visited = new Set();
-  const done = new Set();
-  const scan = (cond) =>
-    walkConditions(cond, (c) => {
-      if (c.visited) visited.add(c.visited);
-      if (c.done) done.add(c.done);
-    });
-  for (const node of story.nodes || []) {
-    if (Array.isArray(node.text)) node.text.forEach((t) => scan(t.condition));
-    if (Array.isArray(node.bg)) node.bg.forEach((b) => scan(b.condition));
-    // 第一次进来才改状态的地方：去没去过决定那段 effect 还会不会发生
-    if (node.first?.effects?.length) visited.add(node.id);
-    (node.choices || []).forEach((c, i) => {
-      scan(c.condition);
-      if (c.once) done.add(c.id || `${node.id}#${i}`); // once 的行动做没做过决定它还在不在
-    });
-  }
-  for (const item of Object.values(story.items || {})) scan(item.examine?.condition);
-  for (const r of story.recipes || []) scan(r.condition);
-  return { visited, done };
-}
-
 function stateKey(engine, rel) {
   const s = engine.state;
   return JSON.stringify([
-    engine.current,
+    [...reach(freeGraph(engine, rel), engine.current)].sort(),
     engine.ending?.id || null,
     Object.entries(s.flags).sort(),
     [...s.inventory].sort(),
+    Object.entries(s.stashes || {})
+      .map(([k, v]) => [k, [...v].sort()])
+      .sort(),
     s.visited.filter((id) => rel.visited.has(id)).sort(),
     s.done.filter((id) => rel.done.has(id)).sort(),
   ]);
 }
 
+// 搜索用的快照：一个字符串，恢复时只解析一次（engine.snapshot / restore 各要深拷贝一遍）
+const freeze = (e) => JSON.stringify([e.state, e.scene, e.current, e.ending]);
+function thaw(engine, frozen) {
+  [engine.state, engine.scene, engine.current, engine.ending] = JSON.parse(frozen);
+  engine.queue = [];
+  engine.last = [];
+}
+
 /**
- * 在状态空间里做广度优先搜索：每个结局能不能走到、最短要几步。
+ * 广度优先搜索：每个结局能不能走到、最少要做几件事（来回走路不算）。
  * 密室逃脱最怕的是「卡死」——道具用掉了、门再也开不了。人工排查靠不住，让机器把路全走一遍。
  */
-export function solve(story, { limit = 50000 } = {}) {
+export function solve(story, { limit = 200000 } = {}) {
   const engine = new ExploreEngine(story);
+  engine.trackHistory = false;
   engine.queue = [];
   const rel = relevance(story);
+  const opening = autoCollect(engine, rel);
   const seen = new Set([stateKey(engine, rel)]);
-  const frontier = [{ snap: engine.snapshot(), path: [] }];
+  const frontier = [{ snap: freeze(engine), path: opening }];
   const endings = {};
   let explored = 0;
   let deadEnds = 0;
-  while (frontier.length && explored < limit) {
-    const { snap, path } = frontier.shift();
+  for (let head = 0; head < frontier.length && explored < limit; head += 1) {
+    const { snap, path } = frontier[head];
+    frontier[head] = null; // 放掉已经处理过的状态，状态多的时候省内存
     explored += 1;
-    engine.restore(snap);
+    thaw(engine, snap);
     if (engine.ending) {
       if (!endings[engine.ending.id]) endings[engine.ending.id] = path;
       continue;
     }
     let progressed = false;
-    for (const move of moves(engine)) {
-      engine.restore(snap);
-      engine.history = [];
+    for (const move of moves(engine, rel)) {
+      thaw(engine, snap);
       if (!move.run(engine)) continue;
       engine.queue = [];
+      const picked = autoCollect(engine, rel);
       const key = stateKey(engine, rel);
       progressed = true;
       if (seen.has(key)) continue;
       seen.add(key);
-      frontier.push({ snap: engine.snapshot(), path: [...path, move.label] });
+      frontier.push({ snap: freeze(engine), path: [...path, move.label, ...picked] });
     }
     if (!progressed) deadEnds += 1;
   }
   const missing = (story.endings || []).filter((id) => !endings[id]);
-  return { endings, missing, explored, deadEnds, exhausted: frontier.length === 0 };
+  return { endings, missing, explored, deadEnds, exhausted: explored >= frontier.length };
 }

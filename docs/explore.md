@@ -11,9 +11,14 @@ frontend/explore/player.js   屏幕：画面、台词、行动、背包
 frontend/explore/play.css    屏幕样式
 frontend/js/explore-panel.js 调试面板：状态图、State、可解性、单个结点的全部规则
 vn/stories/<名字>/story.json 剧本（写着 "engine": "explore" 的就走这一套）
+vn_workflow_v2/              工作流：lint（validate + solve）→ art（背景 / CG）→ build（单文件页）
 ```
 
-宿主 WebUI、`s6_build` 打包出来的单文件页、静态站用的都是同一份引擎，编剧只写 `story.json`。
+宿主 WebUI、`vn_workflow_v2` 打包出来的单文件页、静态站用的都是同一份引擎，编剧只写 `story.json`。
+
+示例两部：原创的《十一点四十七分》（`vn/stories/clockhouse`），和《Stanley博士的家》第一代的复刻
+（`vn/stories/stanley`）。复刻还原了原作的房间、谜题链和剧情结构，文字是重写的；
+原作版权归 James Li（雪夜公爵），复刻只用来在本地验证引擎，**不要公开发布**。
 
 ## 剧情不是树，是有状态的图
 
@@ -40,7 +45,7 @@ vn/stories/<名字>/story.json 剧本（写着 "engine": "explore" 的就走这�
 |---|---|---|
 | **Node** | 一个地点或一段场面 | `{id, kind, label, bg, text, enter, first, choices}` |
 | **Condition** | 现在能不能发生 | `{key, operator, value}` · `{has}` · `{visited}` · `{done}` · `{all}` `{any}` `{not}` |
-| **Effect** | 发生以后世界变成什么样 | `set` · `inc` · `add_item` · `remove_item` |
+| **Effect** | 发生以后世界变成什么样 | `set` · `inc` · `add_item` · `remove_item` · `stash` · `unstash` |
 | **Event** | 具体执行什么动作 | `narrate` · `say` · `bg` · `cg` · `music` · `sfx` · `toast` |
 | **State** | 玩家现在是什么情况 | flags · 背包 · 去过哪 · 做过什么 |
 
@@ -108,6 +113,16 @@ Event 只管呈现，放完就没了，回退时也不会重放。一个块 `{ef
 知道真相之后再看邀请函，看出来的东西不一样）。两件道具「组合」按 `recipes` 匹配，
 材料默认用掉，`keep` 里列的留下。
 
+## 东西被搜走：stash / unstash
+
+```json
+{ "type": "stash", "name": "toolbox" }     // 背包整个收进「toolbox」，玩家两手空空
+{ "type": "unstash", "name": "toolbox" }   // 原样拿回来
+```
+
+Stanley 第一代的蓝色房间就是这个：一开门被打晕，醒来东西全没了，得去粉色里屋的工具箱里找回来。
+只用 `remove_item` 写不出来——被搜走的是**当时背包里有什么**，剧本写的时候并不知道。
+
 ## 写完之后：validate 和 solve
 
 调试面板的状态图下面有两张卡，也是 `tests/test_explore_js.py` 在跑的东西：
@@ -120,6 +135,27 @@ Event 只管呈现，放完就没了，回退时也不会重放。一个块 `{ef
   去重只看「会影响以后还能发生什么」的那部分状态：flags、背包、被条件读到的「去过哪」、
   `once` 或被条件读到的「做过什么」。走过哪几个房间这种历史全放进去的话，
   同一个局面会因为来路不同被当成几万个状态——第一版就是这么搜不完的。
+
+  来回走路也不一步一步搜：从当前位置顺着「不改状态的路」（没有 effect 的 go、进门不改状态的房间）
+  能走到的所有房间算一个区域，搜索的一步是「走到区域里某个房间，做一件会改状态的事」。
+  所以最短路径数的是**真正做了几件事**，不含来回走路；房间一多，状态数能差上百倍。
+
+  纯拾取（只往背包里加东西、没有条件读「没有这样东西」、去得了也回得来）早做晚做都一样，
+  一出现就直接捡掉，不当成分支。改 flag 的不算：检查旧照片会关掉「修好了」那个结局。
+
+  实测：《十一点四十七分》276 个状态 0.1 秒，Stanley 复刻 16005 个状态约 7 秒。
+  调试面板里的可解性放在 Web Worker 里算，先显示「计算中」，算完再补上，不卡页面。
+
+## 工作流：vn_workflow_v2
+
+```bash
+uv run python -m vn_workflow_v2.lint --name stanley --path    # 闸门，--path 把每个结局的最短路径打出来
+uv run python -m vn_workflow_v2.pipeline --name stanley       # lint → art → build
+uv run python -m vn_workflow_v2.pipeline --name stanley --only art --dry-run   # 只报账
+```
+
+lint 不过，后面的段一律不跑：解不开的剧本配上美术也是白花钱。art 直接复用 `vn_workflow` 第 3 段，
+build 和第 6 段共用页面壳和素材编码。`vn_workflow` 的 build 遇到探索剧本会直接报错，不会悄悄打出一个播不了的页面。
 
 ## 美术
 

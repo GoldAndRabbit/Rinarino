@@ -23,7 +23,8 @@ uv run uvicorn backend.app.main:app --reload --port 8811
 - **探索解谜**（`"engine": "explore"`）—— 参照《Stanley 博士的家》的密室逃脱：
   在房子里走动、调查、把道具用在对的地方、输密码开门。剧情是一张**有状态的图**，
   编剧只写 JSON（Node / Condition / Effect / Event / State 五个概念），
-  引擎自带 `validate()` 查剧本、`solve()` 证明每个结局都解得开。示例是《十一点四十七分》，
+  引擎自带 `validate()` 查剧本、`solve()` 证明每个结局都解得开。工作流在 `vn_workflow_v2/`。
+  示例是原创的《十一点四十七分》，和《Stanley博士的家》第一代的复刻（仅供本地研究，别公开发布），
   写法见 [docs/explore.md](docs/explore.md)
 
 两种玩法共用宿主、素材管线、调试面板和打包，调试面板按玩法各画各的（剧情图 / 状态图）。
@@ -33,6 +34,7 @@ uv run uvicorn backend.app.main:app --reload --port 8811
 ```
 util/           与业务无关的 transport：deepseek / Seedream / Seedance / 目录约定
 vn_workflow/    生成端：一句设定 → 素材，只往 vn/stories/<名字>/ 写文件
+vn_workflow_v2/ 探索解谜的工作流：lint（validate + solve）→ art → build，产物同样落在 vn/stories/
 vn/             产物：素材 + 编译好的 story.json，外加 dist/<名字>.html
 backend/        FastAPI：把产物端给前端，一行都不 import 生成端
 frontend/       原生 JS，无构建步骤
