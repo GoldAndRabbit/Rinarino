@@ -16,8 +16,8 @@
   --accent-soft: #eaf1fc;
   --warm: #c8762f;
   --radius: 10px;
-  --rail-w: 152px;
-  --stage-w: 460px;
+  --rail-w: 116px;
+  --stage-w: 470px;
   --font: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB",
           "Microsoft YaHei", system-ui, sans-serif;
   --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
@@ -39,37 +39,12 @@ body {
 
 button { font: inherit; color: inherit; cursor: pointer; }
 
-/* ---------- 顶栏 ---------- */
-
-.topbar {
-  display: flex;
-  align-items: center;
-  gap: 24px;
-  height: 46px;
-  padding: 0 18px;
-  background: var(--surface);
-  border-bottom: 1px solid var(--line);
-}
-
-.brand { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
-.brand-name { font-size: 15px; letter-spacing: 0.04em; font-weight: 600; }
-.brand-sub { font-size: 12px; color: var(--muted); white-space: nowrap; }
-
-.topbar-note {
-  margin-left: auto;
-  font-size: 12px;
-  color: var(--muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
 /* ---------- 骨架 ---------- */
 
 .shell {
   display: grid;
   grid-template-columns: var(--rail-w) var(--stage-w) minmax(0, 1fr);
-  height: calc(100vh - 46px);
+  height: 100vh;
   overflow: hidden;
 }
 
@@ -88,8 +63,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
   text-align: left;
   border: 0;
   background: transparent;
-  padding: 10px 14px;
-  font-size: 13px;
+  padding: 9px 10px;
+  font-size: 12.5px;
   line-height: 1.45;
   color: var(--ink-2);
   border-left: 2px solid transparent;
@@ -101,30 +76,118 @@ button { font: inherit; color: inherit; cursor: pointer; }
   font-weight: 600;
   border-left-color: var(--accent);
 }
-.rail-item small { display: block; font-size: 11px; color: var(--muted); font-weight: 400; }
+.rail-item small { display: block; font-size: 10.5px; color: var(--muted); font-weight: 400; }
 .rail-empty { padding: 16px 14px; font-size: 12px; color: var(--muted); }
 
 /* ---------- 中：播放器 ---------- */
 
 .stage {
   border-right: 1px solid var(--line);
-  background: var(--surface);
+  background: var(--bg);
   overflow-y: auto;
-  padding: 18px 20px 28px;
+  padding: 16px;
+  display: grid;
+  justify-items: center;
+  align-content: start;
 }
 
-.stage-kicker {
-  font-family: var(--mono);
-  font-size: 11px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--muted);
+/* 手机预览：iPhone 17 Pro，逻辑分辨率 402×874 pt，外面一圈 10px 机身。
+   宽度同时受原尺寸、栏宽、窗口高度三样约束——矮屏上整台手机等比缩小，不出滚动条。
+   剧情画面仍是 4:5（和出图比例对齐），多出来的高度给台词、选项和变量条。 */
+.phone {
+  box-sizing: border-box;
+  width: min(422px, 100%, calc((100vh - 32px) * 422 / 894));
+  aspect-ratio: 422 / 894;
+  padding: 10px;
+  border-radius: 64px;
+  background: #1c1c1e;
+  box-shadow: inset 0 0 0 1px #3a3a3c, 0 18px 40px rgba(0, 0, 0, 0.18);
 }
 
-.stage-title { margin: 4px 0 12px; font-size: 22px; letter-spacing: 0.01em; font-weight: 600; }
+.phone-screen {
+  position: relative;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  border-radius: 54px;
+  overflow: hidden;
+  background: #10110f;
+  color: #f4f2ec;
+}
 
-.controls { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+.phone-status {
+  flex: none;
+  height: 54px;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  padding: 0 18px;
+}
+.phone-island { width: 124px; height: 36px; border-radius: 18px; background: #000; }
+.phone-hud { display: flex; gap: 6px; }
+.phone-hud:last-child { justify-content: flex-end; }
 
+.hud {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  color: #f4f2ec;
+  font-size: 14px;
+  line-height: 1;
+}
+.hud:hover:not(:disabled) { background: rgba(255, 255, 255, 0.22); }
+.hud:disabled { opacity: 0.35; cursor: default; }
+.hud-primary:not(:disabled), .hud[aria-pressed="true"] { background: var(--accent); }
+
+.phone-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  padding-bottom: 30px;
+}
+.phone-body::-webkit-scrollbar { display: none; }
+.phone-body .screen { border: 0; border-radius: 0; }
+
+/* 剧情玩法在手机里：画面按宽度算 4:5 只有 502 高，下面会空出一大截。
+   改成画面吃掉台词和变量条以外的全部高度，背景 cover 铺满（4:5 的图左右各裁约一成）。
+   立绘不跟着画面变高：用容器单位封顶，大小和 4:5 画框里一样，否则三个人一起放大、挤出两边。
+   台词框给够三行的高度，台词长短不同时画面不会上下跳。
+   探索玩法下面还有行动和背包，本来就填得满，保持 4:5 不动。 */
+.phone-body:has(> .screen:not(.xp)) { display: flex; flex-direction: column; }
+.phone-body > .screen:not(.xp) { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.phone-body .screen:not(.xp) .screen-art { flex: 1; min-height: 0; aspect-ratio: auto; container-type: size; }
+.phone-body .screen:not(.xp) .dialogue { flex: none; min-height: 140px; }
+.phone-body .screen:not(.xp) .ending { flex: none; }
+.phone-body .screen:not(.xp) + .vars { flex: none; }
+.phone-body .art-sprites img { height: min(92cqh, 115cqw); }
+.phone-body .art-sprites[data-n="2"] img { height: min(90cqh, 112.5cqw); }
+.phone-body .art-sprites[data-n="3"] img { height: min(86cqh, 107.5cqw); }
+.phone-body .art-sprites[data-n="4"] img { height: min(78cqh, 97.5cqw); }
+.phone-body .vars { margin: 0; padding: 12px 14px 0; }
+.phone-body .var-chip { background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.16); color: #d8d5cd; }
+
+.phone-home {
+  position: absolute;
+  left: 50%;
+  bottom: 8px;
+  width: 134px;
+  height: 5px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.55);
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.phone-note { margin: 0; padding: 40px 22px; font-size: 13px; line-height: 1.7; color: #c3bfb8; }
+
+/* 右栏场景详情里的按钮还在用 */
 .ctl {
   border: 1px solid var(--line);
   background: var(--surface);
@@ -525,5 +588,5 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .empty { color: var(--muted); font-size: 13px; padding: 20px 0; }
 
 @media (max-width: 1180px) {
-  :root { --stage-w: 400px; }
+  :root { --stage-w: 440px; }
 }

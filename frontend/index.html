@@ -7,33 +7,33 @@
 <link rel="stylesheet" href="/css/app.css">
 </head>
 <body>
-<header class="topbar">
-  <div class="brand">
-    <span class="brand-name">Rinarino</span>
-    <span class="brand-sub">一句设定进去，一个能玩的分支剧情出来</span>
-  </div>
-  <div class="topbar-note" id="topbar-note"></div>
-</header>
-
 <main class="shell">
   <aside class="rail" id="rail" aria-label="小说列表"></aside>
 
   <section class="stage" id="stage">
-    <div class="stage-head">
-      <div class="stage-kicker" id="stage-kicker"></div>
-      <h1 class="stage-title" id="stage-title">载入中…</h1>
-      <div class="controls" id="controls">
-        <button class="ctl" id="btn-music" aria-pressed="false">♪ 音乐 关</button>
-        <button class="ctl" id="btn-prev">← 上一步</button>
-        <button class="ctl ctl-primary" id="btn-next">下一步 →</button>
-        <button class="ctl" id="btn-restart">重开</button>
+    <!-- 预览框按 iPhone 17 Pro 的逻辑分辨率（402×874 pt）画，窗口矮时整台等比缩小。
+         按钮收进状态栏两侧；id 不能改，播放器靠它们切换可用状态 -->
+    <div class="phone">
+      <div class="phone-screen">
+        <div class="phone-status">
+          <div class="phone-hud">
+            <button class="hud" id="btn-music" aria-pressed="false" title="音乐" aria-label="音乐">♪</button>
+            <button class="hud" id="btn-restart" title="重开" aria-label="重开">↻</button>
+          </div>
+          <div class="phone-island" aria-hidden="true"></div>
+          <div class="phone-hud">
+            <button class="hud" id="btn-prev" title="上一步" aria-label="上一步">←</button>
+            <button class="hud hud-primary" id="btn-next" title="下一步" aria-label="下一步">→</button>
+          </div>
+        </div>
+        <div class="phone-body">
+          <!-- 播放区的 DOM 由 engine/player.js 吐出来，和打包出来的单文件页共用同一份 -->
+          <div id="screen"></div>
+          <div class="vars" id="vars"></div>
+        </div>
+        <div class="phone-home" aria-hidden="true"></div>
       </div>
     </div>
-
-    <!-- 播放区的 DOM 由 engine/player.js 吐出来，和打包出来的单文件页共用同一份 -->
-    <div id="screen"></div>
-
-    <div class="vars" id="vars"></div>
   </section>
 
   <section class="panel" id="panel">

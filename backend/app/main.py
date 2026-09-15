@@ -55,5 +55,18 @@ def api_asset(name: str, filename: str) -> FileResponse:
     return FileResponse(path, headers={"Cache-Control": "no-cache"})
 
 
+class FrontendFiles(StaticFiles):
+    """前端静态文件同样要 no-cache，理由和素材一样。
+
+    不带这个头时浏览器按 last-modified 自己估一个新鲜期：HTML 是导航请求会重新拿，
+    CSS / JS 却直接吃本地旧缓存——新页面配旧脚本，旧 app.js 找不到已经删掉的元素，
+    整页半死不活，普通刷新也救不回来。"""
+
+    def file_response(self, *args, **kwargs):  # type: ignore[override]
+        response = super().file_response(*args, **kwargs)
+        response.headers["Cache-Control"] = "no-cache"
+        return response
+
+
 if FRONTEND.is_dir():
-    app.mount("/", StaticFiles(directory=FRONTEND, html=True), name="frontend")
+    app.mount("/", FrontendFiles(directory=FRONTEND, html=True), name="frontend")

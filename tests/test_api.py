@@ -41,6 +41,14 @@ def test_asset_served():
     assert client.get(url).status_code == 200
 
 
+@pytest.mark.parametrize("path", ["/", "/css/app.css", "/js/app.js", "/engine/play.css"])
+def test_frontend_is_revalidated(path: str):
+    """没有 no-cache 时浏览器会拿新 HTML 配旧 CSS / JS，改完页面刷新出来是坏的。"""
+    res = client.get(path)
+    assert res.status_code == 200
+    assert res.headers.get("cache-control") == "no-cache"
+
+
 @pytest.mark.parametrize("evil", ["../meta.json", "..%2Fmeta.json", "a/../../meta.json"])
 def test_traversal_blocked(evil: str):
     assert client.get(f"/assets/americano/{evil}").status_code in (404, 400)

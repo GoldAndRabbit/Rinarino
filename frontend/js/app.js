@@ -222,13 +222,20 @@ function syncMusic() {
   const ui = state.payload?.meta?.ui || {};
   btn.disabled = !url;
   btn.setAttribute('aria-pressed', String(state.music && Boolean(url)));
-  btn.textContent = `♪ ${state.music && url ? ui.music_on || '音乐 开' : ui.music_off || '音乐 关'}`;
+  const label = state.music && url ? ui.music_on || '音乐 开' : ui.music_off || '音乐 关';
+  btn.title = label;
+  btn.setAttribute('aria-label', label);
   if (!url || !state.music) {
     audio.pause();
     return;
   }
   if (!audio.src.endsWith(url)) audio.src = url;
   audio.play().catch(() => {});
+}
+
+/** 没有剧本可放时，把话写在手机屏幕上——标题区已经没了。 */
+function notice(text) {
+  $('#screen').innerHTML = `<p class="phone-note">${esc(text)}</p>`;
 }
 
 function draw() {
@@ -249,13 +256,13 @@ async function open(name, view = {}) {
   state.focus = state.tab === 'graph' && state.payload.story.nodes.some((n) => n.id === view.node) ? view.node : null;
   player.bind(state.payload);
   const meta = state.payload.meta || {};
-  $('#stage-kicker').textContent = meta.subtitle || '';
-  $('#stage-title').textContent = meta.title || name;
-  $('#topbar-note').textContent = meta.tagline || '';
+  document.title = `${meta.title || name} · Rinarino`;
   const ui = meta.ui || {};
-  $('#btn-prev').textContent = `← ${ui.prev || '上一步'}`;
-  $('#btn-next').textContent = `${ui.next || '下一步'} →`;
-  $('#btn-restart').textContent = ui.restart || '重开';
+  // 手机预览里按钮只剩图标，剧本自定义的叫法挪到悬停提示上
+  for (const [id, label] of [['#btn-prev', ui.prev || '上一步'], ['#btn-next', ui.next || '下一步'], ['#btn-restart', ui.restart || '重开']]) {
+    $(id).title = label;
+    $(id).setAttribute('aria-label', label);
+  }
   renderRail();
   renderTabs();
   player.draw(state.engine);
@@ -349,9 +356,8 @@ document.addEventListener('keydown', (ev) => {
     const view = readHash();
     const first = state.list.find((s) => s.name === view.story) || state.list[0];
     if (first) await open(first.name, view);
-    else $('#stage-title').textContent = '还没有小说';
+    else notice('还没有小说。');
   } catch (err) {
-    $('#stage-title').textContent = '后端没连上';
-    $('#topbar-note').textContent = String(err.message || err);
+    notice(`后端没连上：${err.message || err}`);
   }
 })();
