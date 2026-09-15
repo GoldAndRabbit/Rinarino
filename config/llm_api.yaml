@@ -65,6 +65,20 @@ ark:
     est: 2864x1608          # 16:9  4.60MP
     sprite: 1608x2856       # 9:16  4.59MP
 
+# 生图的另一家：Google Gemini（google-genai 的 Interactions API），env GOOGLE_GEMINI_API_KEY。
+# 封装在 util/gg_gemini_api.py，接口和 image_api 对齐，同一段 prompt 能两边对比。
+# 尺寸不是像素而是「比例 + 档位」，比例和播放框对齐（和上面 ark.sizes 同一套）。
+# 返回 JPEG，封装里统一转成 PNG。没有 seed：同一段 prompt 每次出图都不一样。
+gemini:
+  image_model: gemini-3.1-flash-image
+  image_size: 2K          # 1K / 2K / 4K
+  timeout: 180
+  aspect_ratios:
+    bg: "4:5"
+    cg: "4:5"
+    est: "16:9"
+    sprite: "9:16"
+
 # 视频端：火山引擎方舟 Seedance（异步任务制，env 同样是 ARK_API_KEY）。
 #   duration 秒；generate_audio 让它连着音轨一起出，过场视频就不用再配环境声。
 seedance:
