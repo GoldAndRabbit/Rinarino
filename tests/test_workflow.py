@@ -211,6 +211,41 @@ def test_waves_resolve_the_whole_dependency_chain():
     assert max(d(j.id) for j in plan) == 2, "立绘应该正好三层"
 
 
+def test_force_redraw_waits_for_the_new_reference(tmp_path, monkeypatch):
+    """--force 重画时旧 normal 还在盘上。排程要是只看「文件在不在」，表情图会和 normal
+    同一拨开画、拿旧 normal 当参考——换画风那次整部戏的表情和 CG 就是这么参考了旧画风的。"""
+    import asyncio
+
+    from util import image_api
+
+    cast_src = STORY.path("cast.json").read_text(encoding="utf-8")
+    story = Story("x")
+    monkeypatch.setattr(type(story), "dir", property(lambda _self: tmp_path))
+    (tmp_path / "assets").mkdir()
+    (tmp_path / "cast.json").write_text(cast_src, encoding="utf-8")
+    jobs = s3_gen_art.build_plan(story)
+    for job in jobs:
+        (tmp_path / "assets" / job.filename).write_bytes(b"old")
+
+    seen: dict[str, dict[str, bytes]] = {}
+
+    async def fake_render(job, story, *, use_api, refs, model=None):
+        seen[job.id] = {r: refs[r].read_bytes() for r in job.refs}
+        await asyncio.sleep(0)  # 让同一拨的其他图有机会插进来
+        out = story.asset(job.filename)
+        out.write_bytes(f"new:{job.id}".encode())
+        return out
+
+    monkeypatch.setattr(image_api, "has_credentials", lambda: True)
+    monkeypatch.setattr(s3_gen_art, "render", fake_render)
+    asyncio.run(s3_gen_art.run(story, force=True, concurrency=8, verbose=False))
+
+    assert set(seen) == {j.id for j in jobs}
+    for jid, refs in seen.items():
+        for rid, data in refs.items():
+            assert data == f"new:{rid}".encode(), f"{jid} 拿的是旧的 {rid}"
+
+
 def test_prompt_templates_render_and_catch_typos():
     """提示词模板：变量缺一个或多一个都要当场报错，不能安静地渲染出个半成品。"""
     from util import prompts

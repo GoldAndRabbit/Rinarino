@@ -348,8 +348,11 @@ async def run(
 
     # 分两拨：先画不依赖别人的（背景 / CG / 每个角色的 normal），
     # 再画拿 normal 当参考图的表情图。拨内并发，拨间串行——依赖顺序不能乱。
-    def ready(job: ArtJob) -> bool:
-        return all(refs.get(r, Path(".svg")).suffix == ".png" for r in job.refs)
+    # 「就位」看的是参考图这一轮还要不要重画，不是盘上有没有文件：--force 时旧 normal
+    # 还在盘上，只看文件的话表情图会和 normal 同一拨开画，拿到的是换画风之前的旧参考图。
+    # 参考图这轮画挂了，refs 里留着的旧文件照用，总比没有参考强。
+    def ready(job: ArtJob, waiting: set[str]) -> bool:
+        return not waiting.intersection(job.refs)
 
     gate = asyncio.Semaphore(concurrency)
     done = 0
@@ -371,7 +374,8 @@ async def run(
     # 依赖链有三层（风格锚 → 各角色 normal → 各表情），所以不能写死拨数。
     pending = list(todo)
     while pending:
-        wave = [j for j in pending if ready(j)]
+        waiting = {j.id for j in pending}
+        wave = [j for j in pending if ready(j, waiting)]
         if not wave:
             # 剩下的都在等一张没画成的参考图，直接画，大不了少个参考
             wave = list(pending)
